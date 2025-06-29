@@ -26,7 +26,7 @@ const tourPackages: TourPackage[] = [
     regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Jimma', 'Kaffa', 'Bebeka'],
     price: '$2,850',
     description: 'The ultimate Ethiopian coffee experience. Combine both Southern and Western regions for a comprehensive journey through all major coffee-producing areas of Ethiopia.',
-    image: 'https://images.pexels.com/photos/4109743/pexels-photo-4109743.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
+    image: 'https://media.istockphoto.com/id/1922227078/photo/farmer-talking-to-tourists-in-a-coffee-plantation.jpg?s=612x612&w=0&k=20&c=H0o0PqoMp8H5ROw7_VtrURwYoSEpfDfKDmcG1iq38is=',
     highlights: ['Complete Experience', 'All Major Regions', 'Comprehensive Journey'],
     groupSize: '10-18 People',
     difficulty: 'Comprehensive'
@@ -34,12 +34,12 @@ const tourPackages: TourPackage[] = [
   {
     id: 'southern-ethiopia',
     name: 'Southern Ethiopian Coffee Origin Trip 2025',
-    dates: 'November 26 – December 1, 2025',
+    dates: 'November 26 – December 2, 2025',
     duration: '7 Days',
     regions: ['Sidama', 'Yirgacheffe', 'Guji'],
     price: '$1,850',
     description: 'Explore the legendary coffee regions of Southern Ethiopia. Visit Sidama cooperatives, experience Yirgacheffe\'s floral profiles, and discover Guji\'s innovative processing techniques.',
-    image: 'https://images.pexels.com/photos/4021521/pexels-photo-4021521.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
+    image: 'https://media.istockphoto.com/id/1487292164/photo/mature-woman-drinking-coffee-on-agricultural-field.jpg?s=612x612&w=0&k=20&c=a-mO8R03_WamsxEWRP8ZMMcc8C53N1VEEu_iNxnIpwA=',
     highlights: ['Sidama Cooperatives', 'Yirgacheffe Terroir', 'Guji Innovation'],
     groupSize: '8-15 People',
     difficulty: 'Moderate'
@@ -52,7 +52,7 @@ const tourPackages: TourPackage[] = [
     regions: ['Jimma', 'Kaffa', 'Bebeka'],
     price: '$1,650',
     description: 'Journey to the birthplace of coffee in Western Ethiopia. Explore wild coffee forests in Kaffa, visit historical Jimma, and experience large-scale production at Bebeka Estate.',
-    image: 'https://images.pexels.com/photos/4349775/pexels-photo-4349775.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
+    image: 'https://media.tacdn.com/media/attractions-splice-spp-674x446/0f/e4/16/96.jpg',
     highlights: ['Coffee Birthplace', 'Wild Forests', 'Historical Sites'],
     groupSize: '8-12 People',
     difficulty: 'Adventurous'
@@ -112,30 +112,38 @@ const TourPackages: React.FC = () => {
               className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden border border-cream-200 hover:border-coffee-300 hover:-translate-y-2 flex flex-col h-full"
               style={{ animationDelay: `${index * 150}ms` }}
             >
-              {/* Image */}
-              <div className="relative overflow-hidden">
+              {/* Featured Image */}
+              <div className="relative overflow-hidden h-64 sm:h-72 md:h-80">
                 <img
                   src={tour.image}
                   alt={tour.name}
-                  className="w-full h-48 sm:h-56 md:h-64 object-cover group-hover:scale-110 transition-transform duration-700"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
                 
-                {/* Price Badge */}
-                <div className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-white/95 backdrop-blur-sm text-coffee-800 px-3 sm:px-4 py-2 rounded-full shadow-lg">
+                {/* Image Overlay for better text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                
+                {/* Price Badge - Top Right */}
+                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-coffee-800 px-3 sm:px-4 py-2 rounded-full shadow-lg">
                   <div className="text-base sm:text-lg font-playfair font-bold">{tour.price}</div>
-                  <div className="text-xs font-inter text-coffee-600">per person</div>
+                  <div className="text-xs font-inter text-coffee-600 text-center">per person</div>
                 </div>
 
-                {/* Duration Badge */}
-                <div className="absolute top-3 sm:top-4 left-3 sm:left-4 bg-coffee-600 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-inter font-medium">
+                {/* Duration Badge - Top Left */}
+                <div className="absolute top-4 left-4 bg-coffee-600 text-white px-3 py-1.5 rounded-full text-xs sm:text-sm font-inter font-medium shadow-lg">
                   {tour.duration}
                 </div>
 
-                {/* Difficulty Badge */}
-                <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 bg-earth-600 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-inter font-medium">
+                {/* Difficulty Badge - Bottom Left */}
+                <div className="absolute bottom-4 left-4 bg-earth-600/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs sm:text-sm font-inter font-medium shadow-lg">
                   {tour.difficulty}
+                </div>
+
+                {/* Organizer Badge - Bottom Right */}
+                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm text-coffee-700 px-3 py-1.5 rounded-full text-xs font-inter font-medium shadow-lg flex items-center space-x-1">
+                  <Coffee className="h-3 w-3" />
+                  <span>Yoya Coffee ☕</span>
                 </div>
               </div>
 
@@ -147,19 +155,13 @@ const TourPackages: React.FC = () => {
                     {tour.name}
                   </h3>
 
-                  {/* Organizer */}
-                  <div className="flex items-center space-x-2 mb-3">
-                    <Coffee className="h-4 w-4 text-coffee-500 flex-shrink-0" />
-                    <span className="text-coffee-600 font-inter text-sm">Organized by <strong>Yoya Coffee ☕</strong></span>
-                  </div>
-
                   {/* Dates */}
                   <div className="flex items-start space-x-2 mb-4">
                     <Calendar className="h-4 w-4 text-coffee-500 flex-shrink-0 mt-0.5" />
                     <span className="text-coffee-600 font-inter font-medium text-sm leading-tight">{tour.dates}</span>
                   </div>
 
-                  {/* Read More Link - Positioned after main details */}
+                  {/* Read More Link */}
                   <div className="mb-4">
                     <button 
                       onClick={() => handleReadMore(tour.id)}

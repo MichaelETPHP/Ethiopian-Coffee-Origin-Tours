@@ -8,6 +8,13 @@ const Hero: React.FC = () => {
     minutes: 0,
     seconds: 0
   });
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Hero background images that will alternate
+  const heroImages = [
+    'https://www.aregashlodge.com/index_files/image9111.jpg',
+    'https://lucyethiopiatours.com/wp-content/uploads/2024/04/coffeee-edited.jpg'
+  ];
 
   // Calculate countdown to November 26, 2025
   useEffect(() => {
@@ -35,6 +42,17 @@ const Hero: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Image rotation effect
+  useEffect(() => {
+    const imageInterval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === heroImages.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 6000); // Change image every 6 seconds
+
+    return () => clearInterval(imageInterval);
+  }, [heroImages.length]);
+
   const viewFullItinerary = () => {
     window.location.href = '/itinerary/complete-ethiopia';
   };
@@ -48,35 +66,49 @@ const Hero: React.FC = () => {
 
   return (
     <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
+      {/* Background Images with Crossfade Effect */}
       <div className="absolute inset-0 z-0">
-        <img
-          src="https://www.aregashlodge.com/index_files/image9111.jpg"
-          alt="Breathtaking Ethiopian landscape with mountains and traditional architecture"
-          className="w-full h-full object-cover object-center"
-          loading="eager"
-        />
-        <div className="absolute inset-0 bg-black/40"></div>
+        {heroImages.map((image, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-2000 ease-in-out ${
+              index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <img
+              src={image}
+              alt={`Ethiopian coffee landscape ${index + 1}`}
+              className="w-full h-full object-cover object-center"
+              loading={index === 0 ? "eager" : "lazy"}
+            />
+          </div>
+        ))}
+        
+        {/* Gradient Overlay for Text Readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/30"></div>
+        
+        {/* Additional Bottom Fade for Better Text Readability */}
+        <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent"></div>
       </div>
 
       {/* Content */}
       <div className="relative z-10 text-center text-white max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        {/* Organizer */}
-        <div className="mb-4 sm:mb-6">
-          <div className="inline-flex items-center space-x-2 text-cream-200">
+        {/* Organizer Badge */}
+        <div className="mb-4 sm:mb-6 animate-fade-in">
+          <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md text-cream-200 px-4 py-2 rounded-full border border-white/20">
             <Coffee className="h-4 w-4" />
-            <span className="text-sm font-inter">by Yoya Coffee ☕</span>
+            <span className="text-sm font-inter font-medium">by Yoya Coffee ☕</span>
           </div>
         </div>
 
         {/* Main Headline */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-playfair font-bold mb-6 sm:mb-8 leading-tight">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-playfair font-bold mb-6 sm:mb-8 leading-tight animate-fade-in">
           Ethiopian Coffee
           <span className="block text-cream-200">Origin Adventure</span>
         </h1>
         
         {/* Trip Dates */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-6 sm:mb-8 animate-fade-in">
           <div className="flex items-center justify-center space-x-2 sm:space-x-3 mb-4">
             <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-cream-300" />
             <span className="text-base sm:text-lg lg:text-xl font-inter font-light text-cream-100">
@@ -86,7 +118,7 @@ const Hero: React.FC = () => {
         </div>
 
         {/* Countdown Timer - Mobile Optimized */}
-        <div className="mb-8 sm:mb-12">
+        <div className="mb-8 sm:mb-12 animate-fade-in">
           <div className="text-xs sm:text-sm font-inter text-cream-300 mb-3 sm:mb-4 uppercase tracking-wider">
             Adventure begins in
           </div>
@@ -97,7 +129,7 @@ const Hero: React.FC = () => {
               { value: timeLeft.minutes, label: 'Min' },
               { value: timeLeft.seconds, label: 'Sec' }
             ].map((item, index) => (
-              <div key={index} className="text-center bg-white/10 backdrop-blur-sm rounded-xl py-3 sm:py-4 px-2 sm:px-3">
+              <div key={index} className="text-center bg-white/10 backdrop-blur-md rounded-xl py-3 sm:py-4 px-2 sm:px-3 border border-white/20">
                 <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-playfair font-bold text-white mb-1">
                   {item.value.toString().padStart(2, '0')}
                 </div>
@@ -110,13 +142,13 @@ const Hero: React.FC = () => {
         </div>
 
         {/* Description */}
-        <p className="text-base sm:text-lg font-inter font-light mb-8 sm:mb-12 max-w-2xl mx-auto text-cream-100 leading-relaxed px-4">
+        <p className="text-base sm:text-lg font-inter font-light mb-8 sm:mb-12 max-w-2xl mx-auto text-cream-100 leading-relaxed px-4 animate-fade-in">
           Journey to the birthplace of coffee. Experience authentic culture, 
           breathtaking landscapes, and unforgettable moments in Ethiopia.
         </p>
 
         {/* Call to Action Buttons - Mobile Optimized */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 px-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 px-4 animate-fade-in">
           <button 
             onClick={viewFullItinerary}
             className="group w-full sm:w-auto bg-earth-600 text-white px-6 sm:px-8 py-4 rounded-full font-inter font-medium hover:bg-earth-700 transition-all duration-300 flex items-center justify-center space-x-3 hover:scale-105 shadow-lg min-h-[48px] touch-manipulation"
@@ -135,8 +167,26 @@ const Hero: React.FC = () => {
         </div>
       </div>
 
+      {/* Image Indicators */}
+      <div className="absolute bottom-20 sm:bottom-24 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="flex space-x-2">
+          {heroImages.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentImageIndex(index)}
+              className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
+                index === currentImageIndex 
+                  ? 'bg-white scale-125' 
+                  : 'bg-white/50 hover:bg-white/75'
+              }`}
+              aria-label={`View image ${index + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+
       {/* Scroll Indicator - Hidden on small screens */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce hidden sm:block">
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce-slow hidden sm:block z-10">
         <div className="w-6 h-10 border-2 border-white/50 rounded-full flex justify-center">
           <div className="w-1 h-3 bg-white/70 rounded-full mt-2 animate-pulse"></div>
         </div>
