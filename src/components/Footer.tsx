@@ -23,13 +23,13 @@ const Footer: React.FC = () => {
 
   return (
     <footer id="contact" className="bg-coffee-800 text-white">
-      {/* Newsletter Section */}
-      <div className="bg-coffee-700 py-16">
+      {/* Newsletter Section - Mobile Optimized */}
+      <div className="bg-coffee-700 py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h3 className="text-2xl lg:text-3xl font-playfair font-bold mb-4">
+          <h3 className="text-xl sm:text-2xl lg:text-3xl font-playfair font-bold mb-4">
             Join Our Coffee Community
           </h3>
-          <p className="text-coffee-200 font-inter mb-8 max-w-2xl mx-auto">
+          <p className="text-coffee-200 font-inter mb-6 sm:mb-8 max-w-2xl mx-auto text-sm sm:text-base px-4">
             Get exclusive access to new tours, coffee insights, and special offers delivered to your inbox.
           </p>
           
@@ -40,13 +40,13 @@ const Footer: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
-                className="flex-1 px-4 py-3 rounded-full text-coffee-800 font-inter focus:outline-none focus:ring-2 focus:ring-cream-300"
+                className="flex-1 px-4 py-3 rounded-full text-coffee-800 font-inter focus:outline-none focus:ring-2 focus:ring-cream-300 text-sm sm:text-base min-h-[48px]"
                 required
               />
               <button
                 type="submit"
                 disabled={isSubscribed}
-                className="bg-earth-600 text-white px-6 py-3 rounded-full font-inter font-medium hover:bg-earth-700 transition-all duration-200 flex items-center justify-center space-x-2 hover:scale-105 disabled:opacity-75 disabled:cursor-not-allowed"
+                className="bg-earth-600 text-white px-4 sm:px-6 py-3 rounded-full font-inter font-medium hover:bg-earth-700 transition-all duration-200 flex items-center justify-center space-x-2 hover:scale-105 disabled:opacity-75 disabled:cursor-not-allowed min-h-[48px] touch-manipulation"
               >
                 {isSubscribed ? (
                   <span>Subscribed! ✓</span>
@@ -62,35 +62,35 @@ const Footer: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Footer */}
-      <div className="py-16">
+      {/* Main Footer - Mobile Optimized */}
+      <div className="py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Brand Section */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 sm:col-span-2 lg:col-span-1">
               <div className="flex items-center space-x-2 mb-4">
-                <Coffee className="h-8 w-8 text-cream-200" />
-                <span className="text-xl font-playfair font-bold text-cream-100">
+                <Coffee className="h-6 w-6 sm:h-8 sm:w-8 text-cream-200" />
+                <span className="text-base sm:text-xl font-playfair font-bold text-cream-100 leading-tight">
                   Ethiopian Coffee Origin Trip
                 </span>
               </div>
-              <p className="text-coffee-300 font-inter leading-relaxed mb-4">
+              <p className="text-coffee-300 font-inter leading-relaxed mb-4 text-sm sm:text-base">
                 Organized by <strong className="text-cream-200">Yoya Coffee ☕</strong>
               </p>
-              <p className="text-coffee-300 font-inter leading-relaxed mb-6">
+              <p className="text-coffee-300 font-inter leading-relaxed mb-6 text-sm sm:text-base">
                 Connecting travelers with authentic coffee experiences and the stories behind every cup in Ethiopia's legendary coffee regions.
               </p>
               
               {/* Social Media */}
               <div className="flex space-x-4">
                 {[
-                  { icon: <Instagram className="h-5 w-5" />, label: 'Instagram' },
-                  { icon: <Facebook className="h-5 w-5" />, label: 'Facebook' },
-                  { icon: <Twitter className="h-5 w-5" />, label: 'Twitter' }
+                  { icon: <Instagram className="h-4 w-4 sm:h-5 sm:w-5" />, label: 'Instagram' },
+                  { icon: <Facebook className="h-4 w-4 sm:h-5 sm:w-5" />, label: 'Facebook' },
+                  { icon: <Twitter className="h-4 w-4 sm:h-5 sm:w-5" />, label: 'Twitter' }
                 ].map((social, index) => (
                   <button
                     key={index}
-                    className="bg-coffee-700 text-coffee-200 p-2 rounded-full hover:bg-coffee-600 hover:text-white transition-all duration-200 hover:scale-110"
+                    className="bg-coffee-700 text-coffee-200 p-2 sm:p-3 rounded-full hover:bg-coffee-600 hover:text-white transition-all duration-200 hover:scale-110 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
                     aria-label={social.label}
                   >
                     {social.icon}
@@ -101,7 +101,7 @@ const Footer: React.FC = () => {
 
             {/* Quick Links */}
             <div>
-              <h4 className="text-lg font-playfair font-semibold text-cream-100 mb-4">
+              <h4 className="text-base sm:text-lg font-playfair font-semibold text-cream-100 mb-4">
                 Quick Links
               </h4>
               <ul className="space-y-3">
@@ -114,7 +114,7 @@ const Footer: React.FC = () => {
                   <li key={link.id}>
                     <button
                       onClick={() => scrollToSection(link.id)}
-                      className="text-coffee-300 font-inter hover:text-cream-200 transition-colors duration-200 hover:translate-x-1 transform"
+                      className="text-coffee-300 font-inter hover:text-cream-200 transition-colors duration-200 hover:translate-x-1 transform text-sm sm:text-base min-h-[44px] flex items-center touch-manipulation"
                     >
                       {link.label}
                     </button>
@@ -125,7 +125,7 @@ const Footer: React.FC = () => {
 
             {/* Experiences */}
             <div>
-              <h4 className="text-lg font-playfair font-semibold text-cream-100 mb-4">
+              <h4 className="text-base sm:text-lg font-playfair font-semibold text-cream-100 mb-4">
                 Experiences
               </h4>
               <ul className="space-y-3">
@@ -137,7 +137,7 @@ const Footer: React.FC = () => {
                   'Cultural Immersion'
                 ].map((experience) => (
                   <li key={experience}>
-                    <span className="text-coffee-300 font-inter hover:text-cream-200 transition-colors duration-200 cursor-pointer">
+                    <span className="text-coffee-300 font-inter hover:text-cream-200 transition-colors duration-200 cursor-pointer text-sm sm:text-base">
                       {experience}
                     </span>
                   </li>
@@ -147,21 +147,21 @@ const Footer: React.FC = () => {
 
             {/* Contact Info */}
             <div>
-              <h4 className="text-lg font-playfair font-semibold text-cream-100 mb-4">
+              <h4 className="text-base sm:text-lg font-playfair font-semibold text-cream-100 mb-4">
                 Contact Yoya Coffee ☕
               </h4>
               <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <Mail className="h-4 w-4 text-coffee-400" />
-                  <span className="text-coffee-300 font-inter">hello@yoyacoffee.com</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Phone className="h-4 w-4 text-coffee-400" />
-                  <span className="text-coffee-300 font-inter">+251 (911) 123-456</span>
+                <div className="flex items-start space-x-3">
+                  <Mail className="h-4 w-4 text-coffee-400 flex-shrink-0 mt-0.5" />
+                  <span className="text-coffee-300 font-inter text-sm sm:text-base">hello@yoyacoffee.com</span>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <MapPin className="h-4 w-4 text-coffee-400 mt-0.5" />
-                  <span className="text-coffee-300 font-inter">
+                  <Phone className="h-4 w-4 text-coffee-400 flex-shrink-0 mt-0.5" />
+                  <span className="text-coffee-300 font-inter text-sm sm:text-base">+251 (911) 123-456</span>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <MapPin className="h-4 w-4 text-coffee-400 flex-shrink-0 mt-0.5" />
+                  <span className="text-coffee-300 font-inter text-sm sm:text-base">
                     Addis Ababa, Ethiopia<br />
                     Coffee Capital of the World
                   </span>
@@ -171,7 +171,7 @@ const Footer: React.FC = () => {
               {/* CTA Button */}
               <button 
                 onClick={() => scrollToSection('experiences')}
-                className="mt-6 bg-earth-600 text-white px-6 py-3 rounded-full font-inter font-medium hover:bg-earth-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center space-x-2"
+                className="mt-6 bg-earth-600 text-white px-4 sm:px-6 py-3 rounded-full font-inter font-medium hover:bg-earth-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center space-x-2 text-sm sm:text-base min-h-[48px] touch-manipulation"
               >
                 <span>Book a Tour</span>
                 <ArrowRight className="h-4 w-4" />
@@ -181,18 +181,18 @@ const Footer: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Bar */}
+      {/* Bottom Bar - Mobile Optimized */}
       <div className="border-t border-coffee-700 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-            <p className="text-coffee-400 font-inter text-sm">
+            <p className="text-coffee-400 font-inter text-xs sm:text-sm text-center sm:text-left">
               © 2025 Ethiopian Coffee Origin Trip by Yoya Coffee ☕. All rights reserved.
             </p>
-            <div className="flex space-x-6">
+            <div className="flex flex-wrap justify-center sm:justify-end space-x-4 sm:space-x-6">
               {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((link) => (
                 <button
                   key={link}
-                  className="text-coffee-400 font-inter text-sm hover:text-cream-200 transition-colors duration-200"
+                  className="text-coffee-400 font-inter text-xs sm:text-sm hover:text-cream-200 transition-colors duration-200 min-h-[44px] flex items-center touch-manipulation"
                 >
                   {link}
                 </button>

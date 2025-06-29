@@ -19,6 +19,23 @@ const Header: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
+
   const scrollToSection = (sectionId: string) => {
     if (location.pathname !== '/') {
       navigate(`/#${sectionId}`);
@@ -34,11 +51,12 @@ const Header: React.FC = () => {
 
   const handleLogoClick = () => {
     navigate('/');
+    setIsMobileMenuOpen(false);
   };
 
   const handleBookTour = () => {
     setIsBookingModalOpen(true);
-    setIsMobileMenuOpen(false); // Close mobile menu if open
+    setIsMobileMenuOpen(false);
   };
 
   const closeBookingModal = () => {
@@ -47,6 +65,12 @@ const Header: React.FC = () => {
 
   // Prepare packages data for modal
   const packagesForModal = [
+    {
+      id: 'complete-ethiopia',
+      name: 'Complete Ethiopian Coffee Origin Trip 2025',
+      dates: 'November 26 – December 6, 2025',
+      price: '$2,850 USD'
+    },
     {
       id: 'southern-ethiopia',
       name: 'Southern Ethiopian Coffee Origin Trip 2025',
@@ -58,12 +82,6 @@ const Header: React.FC = () => {
       name: 'Western Ethiopian Coffee Origin Trip 2025',
       dates: 'December 1 – December 6, 2025',
       price: '$1,650 USD'
-    },
-    {
-      id: 'complete-ethiopia',
-      name: 'Complete Ethiopian Coffee Origin Trip 2025',
-      dates: 'November 26 – December 6, 2025',
-      price: '$2,850 USD'
     }
   ];
 
@@ -77,17 +95,18 @@ const Header: React.FC = () => {
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            {/* Logo */}
+          <div className="flex justify-between items-center py-3 sm:py-4">
+            {/* Logo - Mobile Optimized */}
             <div className="flex items-center space-x-2 cursor-pointer" onClick={handleLogoClick}>
-              <Coffee className={`h-8 w-8 ${isScrolled ? 'text-coffee-600' : 'text-white'} transition-colors duration-300`} />
-              <span className={`text-xl font-playfair font-bold ${isScrolled ? 'text-coffee-600' : 'text-white'} transition-colors duration-300`}>
-                Ethiopian Coffee Origin Trip
+              <Coffee className={`h-6 w-6 sm:h-8 sm:w-8 ${isScrolled ? 'text-coffee-600' : 'text-white'} transition-colors duration-300`} />
+              <span className={`text-sm sm:text-lg lg:text-xl font-playfair font-bold ${isScrolled ? 'text-coffee-600' : 'text-white'} transition-colors duration-300 leading-tight`}>
+                <span className="hidden sm:inline">Ethiopian Coffee Origin Trip</span>
+                <span className="sm:hidden">Ethiopian Coffee</span>
               </span>
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-8">
+            <nav className="hidden lg:flex items-center space-x-6 xl:space-x-8">
               {[
                 { label: 'Home', id: 'hero' },
                 { label: 'Tour Packages', id: 'tour-packages' },
@@ -109,7 +128,7 @@ const Header: React.FC = () => {
               ))}
               <button 
                 onClick={handleBookTour}
-                className="bg-earth-600 text-white px-6 py-2 rounded-full font-inter font-medium hover:bg-earth-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center space-x-2"
+                className="bg-earth-600 text-white px-4 xl:px-6 py-2 xl:py-3 rounded-full font-inter font-medium hover:bg-earth-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center space-x-2 text-sm"
               >
                 <Coffee className="h-4 w-4" />
                 <span>Book a Tour</span>
@@ -118,19 +137,45 @@ const Header: React.FC = () => {
 
             {/* Mobile Menu Button */}
             <button
-              className={`md:hidden p-2 rounded-lg transition-colors duration-200 ${
+              className={`lg:hidden p-2 rounded-lg transition-colors duration-200 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation ${
                 isScrolled ? 'text-coffee-600 hover:bg-coffee-100' : 'text-white hover:bg-white/10'
               }`}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle mobile menu"
             >
               {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
+        </div>
 
-          {/* Mobile Menu */}
-          {isMobileMenuOpen && (
-            <div className="md:hidden bg-white border-t border-coffee-200 py-4 animate-slide-up">
-              <nav className="flex flex-col space-y-4">
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+        )}
+
+        {/* Mobile Menu */}
+        <div className={`lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
+          isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}>
+          <div className="flex flex-col h-full">
+            {/* Mobile Menu Header */}
+            <div className="flex items-center justify-between p-4 border-b border-coffee-200">
+              <div className="flex items-center space-x-2">
+                <Coffee className="h-6 w-6 text-coffee-600" />
+                <span className="text-lg font-playfair font-bold text-coffee-600">Ethiopian Coffee</span>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 text-coffee-400 hover:text-coffee-600 transition-colors duration-200 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
+                aria-label="Close mobile menu"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Mobile Menu Content */}
+            <nav className="flex-1 py-6">
+              <div className="space-y-2 px-4">
                 {[
                   { label: 'Home', id: 'hero' },
                   { label: 'Tour Packages', id: 'tour-packages' },
@@ -141,21 +186,25 @@ const Header: React.FC = () => {
                   <button
                     key={item.id}
                     onClick={() => scrollToSection(item.id)}
-                    className="text-left px-4 py-2 text-coffee-600 font-inter font-medium hover:bg-coffee-50 rounded-lg transition-colors duration-200"
+                    className="w-full text-left px-4 py-4 text-coffee-600 font-inter font-medium hover:bg-coffee-50 rounded-xl transition-colors duration-200 min-h-[48px] touch-manipulation"
                   >
                     {item.label}
                   </button>
                 ))}
+              </div>
+              
+              {/* Mobile Book Tour Button */}
+              <div className="px-4 mt-6">
                 <button 
                   onClick={handleBookTour}
-                  className="mx-4 bg-earth-600 text-white px-6 py-3 rounded-full font-inter font-medium hover:bg-earth-700 transition-colors duration-200 flex items-center justify-center space-x-2"
+                  className="w-full bg-earth-600 text-white px-6 py-4 rounded-xl font-inter font-medium hover:bg-earth-700 transition-colors duration-200 flex items-center justify-center space-x-2 min-h-[48px] touch-manipulation"
                 >
-                  <Coffee className="h-4 w-4" />
+                  <Coffee className="h-5 w-5" />
                   <span>Book a Tour</span>
                 </button>
-              </nav>
-            </div>
-          )}
+              </div>
+            </nav>
+          </div>
         </div>
       </header>
 

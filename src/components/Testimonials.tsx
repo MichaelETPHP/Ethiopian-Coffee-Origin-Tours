@@ -92,21 +92,21 @@ const Testimonials: React.FC = () => {
   };
 
   return (
-    <section className="py-20 lg:py-32 bg-cream-50">
+    <section className="py-16 sm:py-20 lg:py-32 bg-cream-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-playfair font-bold text-coffee-800 mb-4">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-playfair font-bold text-coffee-800 mb-4 px-4">
             What Our Travelers Say
           </h2>
-          <p className="text-lg font-inter text-coffee-600 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg font-inter text-coffee-600 max-w-2xl mx-auto px-4">
             Join thousands of coffee lovers who have discovered the birthplace of coffee through our authentic Ethiopian experiences.
           </p>
         </div>
 
-        {/* Testimonials Carousel */}
+        {/* Testimonials Carousel - Mobile Optimized */}
         <div className="relative max-w-4xl mx-auto">
-          <div className="overflow-hidden rounded-2xl">
+          <div className="overflow-hidden rounded-xl sm:rounded-2xl">
             <div 
               className="flex transition-transform duration-500 ease-in-out"
               style={{ transform: `translateX(-${currentIndex * 100}%)` }}
@@ -114,41 +114,41 @@ const Testimonials: React.FC = () => {
               {testimonials.map((testimonial) => (
                 <div
                   key={testimonial.id}
-                  className="w-full flex-shrink-0 bg-white p-8 lg:p-12"
+                  className="w-full flex-shrink-0 bg-white p-6 sm:p-8 lg:p-12"
                 >
                   <div className="text-center">
                     {/* Quote Icon */}
-                    <div className="flex justify-center mb-6">
-                      <div className="bg-coffee-100 p-3 rounded-full">
-                        <Quote className="h-6 w-6 text-coffee-600" />
+                    <div className="flex justify-center mb-4 sm:mb-6">
+                      <div className="bg-coffee-100 p-2 sm:p-3 rounded-full">
+                        <Quote className="h-5 w-5 sm:h-6 sm:w-6 text-coffee-600" />
                       </div>
                     </div>
 
                     {/* Rating */}
-                    <div className="flex justify-center space-x-1 mb-6">
+                    <div className="flex justify-center space-x-1 mb-4 sm:mb-6">
                       {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                        <Star key={i} className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400 fill-current" />
                       ))}
                     </div>
 
                     {/* Comment */}
-                    <blockquote className="text-lg lg:text-xl font-inter text-coffee-700 leading-relaxed mb-8 italic">
+                    <blockquote className="text-base sm:text-lg lg:text-xl font-inter text-coffee-700 leading-relaxed mb-6 sm:mb-8 italic px-4">
                       "{testimonial.comment}"
                     </blockquote>
 
                     {/* Author */}
-                    <div className="flex items-center justify-center space-x-4">
+                    <div className="flex items-center justify-center space-x-3 sm:space-x-4">
                       <img
                         src={testimonial.avatar}
                         alt={testimonial.name}
-                        className="w-12 h-12 rounded-full object-cover"
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover"
                         loading="lazy"
                       />
                       <div className="text-left">
-                        <div className="font-playfair font-semibold text-coffee-800">
+                        <div className="font-playfair font-semibold text-coffee-800 text-sm sm:text-base">
                           {testimonial.name}
                         </div>
-                        <div className="text-sm font-inter text-coffee-600">
+                        <div className="text-xs sm:text-sm font-inter text-coffee-600">
                           {testimonial.location}
                         </div>
                         <div className="text-xs font-inter text-coffee-500 mt-1">
@@ -162,32 +162,37 @@ const Testimonials: React.FC = () => {
             </div>
           </div>
 
-          {/* Navigation Buttons */}
+          {/* Navigation Buttons - Mobile Optimized */}
           <button
             onClick={goToPrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm text-coffee-600 p-3 rounded-full shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 hover:scale-110"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm text-coffee-600 p-2 sm:p-3 rounded-full shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 hover:scale-110 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
+            aria-label="Previous testimonial"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <button
             onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm text-coffee-600 p-3 rounded-full shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 hover:scale-110"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm text-coffee-600 p-2 sm:p-3 rounded-full shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 hover:scale-110 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
+            aria-label="Next testimonial"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
 
-          {/* Pagination Dots */}
-          <div className="flex justify-center space-x-2 mt-8">
+          {/* Pagination Dots - Mobile Optimized */}
+          <div className="flex justify-center space-x-2 mt-6 sm:mt-8">
             {testimonials.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-200 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation ${
                   index === currentIndex
                     ? 'bg-coffee-600 scale-125'
                     : 'bg-coffee-300 hover:bg-coffee-400'
                 }`}
-              />
+                aria-label={`Go to testimonial ${index + 1}`}
+              >
+                <span className="sr-only">Testimonial {index + 1}</span>
+              </button>
             ))}
           </div>
         </div>

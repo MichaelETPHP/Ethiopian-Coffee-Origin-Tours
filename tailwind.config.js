@@ -17,6 +17,7 @@ export default {
           900: '#3D2B1F',
         },
         cream: {
+          25: '#FEFEFE',
           50: '#FEFDFB',
           100: '#FDF9F3',
           200: '#F9F1E6',

@@ -104,59 +104,60 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
         onClick={onClose}
       />
       
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-cream-200 p-6 rounded-t-2xl">
+      {/* Modal - Mobile Optimized */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto transform transition-all duration-300 scale-100">
+        {/* Header - Sticky on mobile */}
+        <div className="sticky top-0 bg-white border-b border-cream-200 p-4 sm:p-6 rounded-t-2xl z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="bg-coffee-600 text-white p-2 rounded-full">
-                <Coffee className="h-5 w-5" />
+              <div className="bg-coffee-600 text-white p-2 rounded-full flex-shrink-0">
+                <Coffee className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <h2 className="text-2xl font-playfair font-bold text-coffee-800">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg sm:text-2xl font-playfair font-bold text-coffee-800 leading-tight">
                   Book Your Ethiopian Adventure
                 </h2>
-                <p className="text-coffee-600 font-inter text-sm">
+                <p className="text-coffee-600 font-inter text-xs sm:text-sm">
                   Join Yoya Coffee ☕ for an unforgettable journey
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-coffee-400 hover:text-coffee-600 transition-colors duration-200 p-2 hover:bg-coffee-50 rounded-full"
+              className="text-coffee-400 hover:text-coffee-600 transition-colors duration-200 p-2 hover:bg-coffee-50 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation flex-shrink-0"
+              aria-label="Close modal"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {!isSubmitted ? (
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Selected Package Info */}
               {selectedPackageDetails && (
                 <div className="bg-coffee-50 border border-coffee-200 rounded-xl p-4 mb-6">
-                  <h3 className="font-playfair font-semibold text-coffee-800 mb-2">
+                  <h3 className="font-playfair font-semibold text-coffee-800 mb-2 text-sm sm:text-base">
                     Selected Package
                   </h3>
                   <div className="text-coffee-700 font-inter">
-                    <p className="font-medium">{selectedPackageDetails.name}</p>
-                    <p className="text-sm text-coffee-600">{selectedPackageDetails.dates}</p>
-                    <p className="text-lg font-bold text-coffee-800 mt-1">{selectedPackageDetails.price}</p>
+                    <p className="font-medium text-sm sm:text-base">{selectedPackageDetails.name}</p>
+                    <p className="text-xs sm:text-sm text-coffee-600">{selectedPackageDetails.dates}</p>
+                    <p className="text-base sm:text-lg font-bold text-coffee-800 mt-1">{selectedPackageDetails.price}</p>
                   </div>
                 </div>
               )}
 
               {/* Personal Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-playfair font-semibold text-coffee-800 flex items-center">
-                  <User className="h-5 w-5 mr-2" />
+                <h3 className="text-base sm:text-lg font-playfair font-semibold text-coffee-800 flex items-center">
+                  <User className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   Personal Information
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="fullName" className="block text-sm font-inter font-medium text-coffee-700 mb-2">
                       Full Name *
@@ -168,7 +169,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
                       value={formData.fullName}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter"
+                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm sm:text-base min-h-[48px]"
                       placeholder="Enter your full name"
                     />
                   </div>
@@ -186,13 +187,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
                       required
                       min="18"
                       max="100"
-                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter"
+                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm sm:text-base min-h-[48px]"
                       placeholder="Your age"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="email" className="block text-sm font-inter font-medium text-coffee-700 mb-2">
                       Email Address *
@@ -204,7 +205,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter"
+                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm sm:text-base min-h-[48px]"
                       placeholder="your.email@example.com"
                     />
                   </div>
@@ -220,7 +221,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
                       value={formData.phone}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter"
+                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm sm:text-base min-h-[48px]"
                       placeholder="+1 (555) 123-4567"
                     />
                   </div>
@@ -229,12 +230,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
 
               {/* Booking Details */}
               <div className="space-y-4">
-                <h3 className="text-lg font-playfair font-semibold text-coffee-800 flex items-center">
-                  <Calendar className="h-5 w-5 mr-2" />
+                <h3 className="text-base sm:text-lg font-playfair font-semibold text-coffee-800 flex items-center">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   Booking Details
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="bookingType" className="block text-sm font-inter font-medium text-coffee-700 mb-2">
                       Booking Type *
@@ -245,7 +246,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
                       value={formData.bookingType}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter"
+                      className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm sm:text-base min-h-[48px]"
                     >
                       <option value="individual">Individual</option>
                       <option value="group">Group</option>
@@ -266,7 +267,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
                         required
                         min="2"
                         max="18"
-                        className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter"
+                        className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm sm:text-base min-h-[48px]"
                         placeholder="Number of travelers"
                       />
                     </div>
@@ -283,7 +284,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
                     value={formData.selectedPackage}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter"
+                    className="w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm sm:text-base min-h-[48px]"
                   >
                     <option value="">Choose a package...</option>
                     {packages.map((pkg) => (
@@ -300,7 +301,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-coffee-600 text-white py-4 px-6 rounded-xl font-inter font-medium hover:bg-coffee-700 transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-75 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center space-x-2"
+                  className="w-full bg-coffee-600 text-white py-4 px-6 rounded-xl font-inter font-medium hover:bg-coffee-700 transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-75 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center space-x-2 min-h-[48px] touch-manipulation"
                 >
                   {isSubmitting ? (
                     <>
@@ -329,16 +330,16 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, selectedPa
               <div className="bg-green-100 text-green-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Check className="h-8 w-8" />
               </div>
-              <h3 className="text-2xl font-playfair font-bold text-coffee-800 mb-4">
+              <h3 className="text-xl sm:text-2xl font-playfair font-bold text-coffee-800 mb-4">
                 Booking Request Received!
               </h3>
-              <p className="text-coffee-600 font-inter mb-6 max-w-md mx-auto">
+              <p className="text-coffee-600 font-inter mb-6 max-w-md mx-auto text-sm sm:text-base px-4">
                 Thank you for your interest in our Ethiopian Coffee Origin Trip. 
                 Yoya Coffee ☕ will contact you within 24 hours to confirm your booking details.
               </p>
               <div className="bg-coffee-50 border border-coffee-200 rounded-xl p-4 text-left max-w-md mx-auto">
-                <h4 className="font-playfair font-semibold text-coffee-800 mb-2">Next Steps:</h4>
-                <ul className="text-sm text-coffee-600 font-inter space-y-1">
+                <h4 className="font-playfair font-semibold text-coffee-800 mb-2 text-sm sm:text-base">Next Steps:</h4>
+                <ul className="text-xs sm:text-sm text-coffee-600 font-inter space-y-1">
                   <li>• Check your email for confirmation</li>
                   <li>• We'll verify availability for your dates</li>
                   <li>• Payment and travel details will follow</li>
