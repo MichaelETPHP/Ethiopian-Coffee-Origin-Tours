@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Coffee, Menu, X } from 'lucide-react';
-import BookingModal from './BookingModal';
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -55,35 +53,9 @@ const Header: React.FC = () => {
   };
 
   const handleBookTour = () => {
-    setIsBookingModalOpen(true);
+    navigate('/booking');
     setIsMobileMenuOpen(false);
   };
-
-  const closeBookingModal = () => {
-    setIsBookingModalOpen(false);
-  };
-
-  // Prepare packages data for modal
-  const packagesForModal = [
-    {
-      id: 'complete-ethiopia',
-      name: 'Complete Ethiopian Coffee Origin Trip 2025',
-      dates: 'November 26 – December 6, 2025',
-      price: '$2,850 USD'
-    },
-    {
-      id: 'southern-ethiopia',
-      name: 'Southern Ethiopian Coffee Origin Trip 2025',
-      dates: 'November 26 – December 2, 2025',
-      price: '$1,850 USD'
-    },
-    {
-      id: 'western-ethiopia',
-      name: 'Western Ethiopian Coffee Origin Trip 2025',
-      dates: 'December 1 – December 6, 2025',
-      price: '$1,650 USD'
-    }
-  ];
 
   return (
     <>
@@ -110,7 +82,6 @@ const Header: React.FC = () => {
               {[
                 { label: 'Home', id: 'hero' },
                 { label: 'Tour Packages', id: 'tour-packages' },
-                { label: 'Experiences', id: 'experiences' },
                 { label: 'About', id: 'about' },
                 { label: 'Contact', id: 'contact' }
               ].map((item) => (
@@ -148,18 +119,18 @@ const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile Menu Overlay */}
+        {/* Mobile Menu Overlay - Fixed */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+          <div className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
         )}
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu - Fixed */}
         <div className={`lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
           <div className="flex flex-col h-full">
             {/* Mobile Menu Header */}
-            <div className="flex items-center justify-between p-4 border-b border-coffee-200">
+            <div className="flex items-center justify-between p-4 border-b border-coffee-200 bg-white">
               <div className="flex items-center space-x-2">
                 <Coffee className="h-6 w-6 text-coffee-600" />
                 <span className="text-lg font-playfair font-bold text-coffee-600">Ethiopian Coffee</span>
@@ -174,12 +145,11 @@ const Header: React.FC = () => {
             </div>
 
             {/* Mobile Menu Content */}
-            <nav className="flex-1 py-6">
+            <nav className="flex-1 py-6 bg-white">
               <div className="space-y-2 px-4">
                 {[
                   { label: 'Home', id: 'hero' },
                   { label: 'Tour Packages', id: 'tour-packages' },
-                  { label: 'Experiences', id: 'experiences' },
                   { label: 'About', id: 'about' },
                   { label: 'Contact', id: 'contact' }
                 ].map((item) => (
@@ -207,14 +177,6 @@ const Header: React.FC = () => {
           </div>
         </div>
       </header>
-
-      {/* Booking Modal */}
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={closeBookingModal}
-        selectedPackage=""
-        packages={packagesForModal}
-      />
     </>
   );
 };
