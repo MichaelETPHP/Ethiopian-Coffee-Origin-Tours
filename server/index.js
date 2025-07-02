@@ -1,4 +1,4 @@
-// server/index.js - Updated for PostgreSQL/Neon
+// server/index.js - Route to existing API files
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -12,70 +12,28 @@ import nodemailer from 'nodemailer'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'fs'
 
 const { Pool } = pg
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Load .env from parent directory (root)
-dotenv.config({ path: path.join(__dirname, '../.env') })
+dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 3001
 
 // Security middleware
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com'],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          'https://cdn.tailwindcss.com',
-          'https://unpkg.com',
-        ],
-        fontSrc: ["'self'", 'https:', 'data:'],
-        imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: [
-          "'self'",
-          'http://localhost:3001',
-          'http://localhost:5173',
-        ],
-        frameSrc: ["'self'"],
-        objectSrc: ["'none'"],
-        mediaSrc: ["'self'"],
-        manifestSrc: ["'self'"],
-      },
-    },
-  })
-)
-
-// CORS configuration
+app.use(helmet())
 app.use(
   cors({
     origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 )
-
 app.use(compression())
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-})
-app.use(limiter)
-
-const bookingLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-})
-
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
@@ -101,100 +59,10 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 })
 
-// Email configuration
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: process.env.SMTP_PORT || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-})
-
-// Initialize database
-async function initializeDatabase() {
-  try {
-    const client = await pool.connect()
-
-    // Create bookings table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS bookings (
-        id SERIAL PRIMARY KEY,
-        full_name VARCHAR(255) NOT NULL,
-        age INTEGER NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        phone VARCHAR(50) NOT NULL,
-        country VARCHAR(100) NOT NULL,
-        booking_type VARCHAR(20) CHECK (booking_type IN ('individual', 'group')) NOT NULL,
-        number_of_people INTEGER DEFAULT 1,
-        selected_package VARCHAR(255) NOT NULL,
-        status VARCHAR(20) CHECK (status IN ('pending', 'confirmed', 'cancelled')) DEFAULT 'pending',
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `)
-
-    // Create indexes
-    await client.query(
-      'CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email)'
-    )
-    await client.query(
-      'CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at)'
-    )
-    await client.query(
-      'CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)'
-    )
-
-    // Create admin users table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS admin_users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(100) UNIQUE NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(20) CHECK (role IN ('admin', 'manager')) DEFAULT 'admin',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_login TIMESTAMP NULL
-      )
-    `)
-
-    // Create default admin user if none exists
-    const adminCheck = await client.query(
-      'SELECT COUNT(*) as count FROM admin_users'
-    )
-    if (parseInt(adminCheck.rows[0].count) === 0) {
-      const defaultPassword = process.env.ADMIN_PASSWORD || 'admin123'
-      const hashedPassword = await bcrypt.hash(defaultPassword, 12)
-
-      await client.query(
-        `INSERT INTO admin_users (username, email, password_hash, role) 
-         VALUES ($1, $2, $3, $4)`,
-        [
-          'admin',
-          process.env.ADMIN_EMAIL || 'admin@ethiopiancoffeetrip.com',
-          hashedPassword,
-          'admin',
-        ]
-      )
-
-      console.log('Default admin user created with username: admin')
-      console.log('Default password:', defaultPassword)
-    }
-
-    client.release()
-    console.log('Database initialized successfully')
-  } catch (error) {
-    console.error('Database initialization error:', error)
-  }
-}
-
 // JWT middleware
 const authenticateAdmin = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '')
-
     if (!token) {
       return res
         .status(401)
@@ -206,12 +74,10 @@ const authenticateAdmin = async (req, res, next) => {
       process.env.JWT_SECRET || 'your-secret-key'
     )
     const client = await pool.connect()
-
     const users = await client.query(
       'SELECT id, username, email, role FROM admin_users WHERE id = $1',
       [decoded.userId]
     )
-
     client.release()
 
     if (users.rows.length === 0) {
@@ -225,434 +91,233 @@ const authenticateAdmin = async (req, res, next) => {
   }
 }
 
-// Send email function
-async function sendEmail(to, subject, html, cc = null) {
+// Helper function to read and execute API files
+async function executeAPIFile(filePath, req, res) {
   try {
-    const mailOptions = {
-      from: process.env.SMTP_FROM || 'noreply@ethiopiancoffeetrip.com',
-      to,
-      subject,
-      html,
+    const fullPath = path.join(process.cwd(), 'api', filePath)
+
+    // Check if file exists
+    if (!fs.existsSync(fullPath)) {
+      console.log(`API file not found: ${fullPath}`)
+      return res.status(404).json({ error: 'API endpoint not found' })
     }
 
-    if (cc) {
-      mailOptions.cc = cc
-    }
+    // Dynamic import the API file
+    const apiModule = await import(`file://${fullPath}?t=${Date.now()}`)
 
-    await transporter.sendMail(mailOptions)
-    console.log('Email sent successfully to:', to)
+    // Execute the default handler
+    if (apiModule.default && typeof apiModule.default === 'function') {
+      await apiModule.default(req, res)
+    } else {
+      res.status(500).json({ error: 'Invalid API handler' })
+    }
   } catch (error) {
-    console.error('Email sending error:', error)
-    throw error
+    console.error(`Error executing API file ${filePath}:`, error)
+    res
+      .status(500)
+      .json({ error: 'API execution error', details: error.message })
   }
 }
 
-// Routes
+// API Routes - Forward to existing API files
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() })
+app.get('/api/health', async (req, res) => {
+  await executeAPIFile('health.js', req, res)
 })
 
-// Submit booking
-app.post('/api/bookings', bookingLimiter, async (req, res) => {
-  try {
-    const {
-      fullName,
-      age,
-      email,
-      phone,
-      country,
-      bookingType,
-      numberOfPeople,
-      selectedPackage,
-    } = req.body
-
-    if (
-      !fullName ||
-      !age ||
-      !email ||
-      !phone ||
-      !country ||
-      !bookingType ||
-      !selectedPackage
-    ) {
-      return res.status(400).json({ error: 'Missing required fields' })
-    }
-
-    const client = await pool.connect()
-
-    try {
-      await client.query('BEGIN')
-
-      // Check for duplicate bookings
-      const existingBookings = await client.query(
-        `SELECT id FROM bookings 
-         WHERE email = $1 AND selected_package = $2 
-         AND (status IS NULL OR status != 'cancelled') 
-         LIMIT 1`,
-        [email, selectedPackage]
-      )
-
-      if (existingBookings.rows.length > 0) {
-        await client.query('ROLLBACK')
-        return res.status(409).json({
-          error:
-            'A booking with this email already exists for the selected package.',
-        })
-      }
-
-      // Insert booking
-      const result = await client.query(
-        `INSERT INTO bookings (
-          full_name, age, email, phone, country, booking_type, 
-          number_of_people, selected_package, status, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW()) 
-        RETURNING id`,
-        [
-          fullName,
-          age,
-          email,
-          phone,
-          country,
-          bookingType,
-          bookingType === 'group' ? numberOfPeople : 1,
-          selectedPackage,
-        ]
-      )
-
-      await client.query('COMMIT')
-      res.status(201).json({
-        message: 'Booking submitted successfully',
-        bookingId: result.rows[0].id,
-      })
-    } catch (error) {
-      await client.query('ROLLBACK')
-      throw error
-    } finally {
-      client.release()
-    }
-  } catch (error) {
-    console.error('Booking submission error:', error)
-    res.status(500).json({ error: 'Internal server error' })
-  }
-})
-
-// Admin login
+// Admin login - Use existing api/admin/login.js
 app.post('/api/admin/login', async (req, res) => {
-  try {
-    const { username, password } = req.body
-
-    if (!username || !password) {
-      return res
-        .status(400)
-        .json({ error: 'Username and password are required' })
-    }
-
-    const client = await pool.connect()
-
-    const users = await client.query(
-      'SELECT id, username, email, password_hash, role FROM admin_users WHERE username = $1',
-      [username]
-    )
-
-    if (users.rows.length === 0) {
-      client.release()
-      return res.status(401).json({ error: 'Invalid credentials' })
-    }
-
-    const user = users.rows[0]
-    const isValidPassword = await bcrypt.compare(password, user.password_hash)
-
-    if (!isValidPassword) {
-      client.release()
-      return res.status(401).json({ error: 'Invalid credentials' })
-    }
-
-    // Update last login
-    await client.query(
-      'UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
-      [user.id]
-    )
-
-    client.release()
-
-    const token = jwt.sign(
-      { userId: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    )
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
-    })
-  } catch (error) {
-    console.error('Login error:', error)
-    res.status(500).json({ error: 'Internal server error' })
-  }
+  await executeAPIFile('admin/login.js', req, res)
 })
 
-// Get all bookings (admin only)
-app.get('/api/admin/bookings', authenticateAdmin, async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 50,
-      search = '',
-      status = '',
-      package: packageFilter = '',
-    } = req.query
-    const offset = (page - 1) * limit
-
-    let query = 'SELECT * FROM bookings WHERE 1=1'
-    let countQuery = 'SELECT COUNT(*) as total FROM bookings WHERE 1=1'
-    const params = []
-    const countParams = []
-    let paramIndex = 1
-
-    if (search) {
-      query += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
-        paramIndex + 1
-      } OR phone ILIKE $${paramIndex + 2})`
-      countQuery += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
-        paramIndex + 1
-      } OR phone ILIKE $${paramIndex + 2})`
-      const searchParam = `%${search}%`
-      params.push(searchParam, searchParam, searchParam)
-      countParams.push(searchParam, searchParam, searchParam)
-      paramIndex += 3
-    }
-
-    if (status) {
-      query += ` AND status = $${paramIndex}`
-      countQuery += ` AND status = $${paramIndex}`
-      params.push(status)
-      countParams.push(status)
-      paramIndex += 1
-    }
-
-    if (packageFilter) {
-      query += ` AND selected_package ILIKE $${paramIndex}`
-      countQuery += ` AND selected_package ILIKE $${paramIndex}`
-      params.push(`%${packageFilter}%`)
-      countParams.push(`%${packageFilter}%`)
-      paramIndex += 1
-    }
-
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${
-      paramIndex + 1
-    }`
-    params.push(parseInt(limit), parseInt(offset))
-
-    const client = await pool.connect()
-    const bookings = await client.query(query, params)
-    const countResult = await client.query(countQuery, countParams)
-    client.release()
-
-    res.json({
-      bookings: bookings.rows,
-      total: parseInt(countResult.rows[0].total),
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(countResult.rows[0].total / limit),
-    })
-  } catch (error) {
-    console.error('Get bookings error:', error)
-    res.status(500).json({ error: 'Internal server error' })
-  }
+// Admin bookings - Use existing api/admin/bookings.js
+app.get('/api/admin/bookings', async (req, res) => {
+  await executeAPIFile('admin/bookings.js', req, res)
 })
 
-// Update booking status
-app.patch('/api/admin/bookings/:id', authenticateAdmin, async (req, res) => {
-  try {
-    const { id } = req.params
-    const { status, notes } = req.body
-
-    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' })
-    }
-
-    const client = await pool.connect()
-
-    await client.query(
-      'UPDATE bookings SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-      [status, notes || null, id]
-    )
-
-    client.release()
-
-    res.json({ message: 'Booking updated successfully' })
-  } catch (error) {
-    console.error('Update booking error:', error)
-    res.status(500).json({ error: 'Internal server error' })
-  }
+app.patch('/api/admin/bookings/:id', async (req, res) => {
+  await executeAPIFile('admin/bookings.js', req, res)
 })
 
-// Delete booking
+// Booking submission - Use existing api/bookings.js
+app.post('/api/bookings', async (req, res) => {
+  await executeAPIFile('bookings.js', req, res)
+})
+
 app.delete('/api/bookings/:id', async (req, res) => {
-  try {
-    const { id } = req.params
-    const client = await pool.connect()
-    const result = await client.query('DELETE FROM bookings WHERE id = $1', [
-      id,
-    ])
-    client.release()
+  await executeAPIFile('bookings.js', req, res)
+})
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Booking not found' })
+// Admin Pages - Use existing API files that return HTML
+
+// Admin login page - Use existing api/admin.js (login page)
+app.get('/admin', async (req, res) => {
+  try {
+    const adminFilePath = path.join(process.cwd(), 'api', 'admin.js')
+
+    if (fs.existsSync(adminFilePath)) {
+      console.log('Using existing api/admin.js for login page')
+      await executeAPIFile('admin.js', req, res)
+    } else {
+      // Fallback simple login if api/admin.js doesn't exist
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Admin Login</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-gray-100 min-h-screen flex items-center justify-center">
+            <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+                <h1 class="text-2xl font-bold mb-6 text-center">Admin Login</h1>
+                <form id="loginForm">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Username</label>
+                        <input type="text" id="username" value="admin" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                        <input type="password" id="password" value="secure_admin_password_123" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Sign In</button>
+                </form>
+                <div id="message" class="mt-4 p-3 rounded hidden"></div>
+            </div>
+            
+            <script>
+                document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    
+                    try {
+                        const response = await fetch('/api/admin/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password }),
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            localStorage.setItem('authToken', data.token);
+                            window.location.href = '/admin/dashboard';
+                        } else {
+                            document.getElementById('message').innerHTML = '<div class="bg-red-100 text-red-700 p-3 rounded">' + (data.error || 'Login failed') + '</div>';
+                            document.getElementById('message').classList.remove('hidden');
+                        }
+                    } catch (error) {
+                        document.getElementById('message').innerHTML = '<div class="bg-red-100 text-red-700 p-3 rounded">Login failed: ' + error.message + '</div>';
+                        document.getElementById('message').classList.remove('hidden');
+                    }
+                });
+            </script>
+        </body>
+        </html>
+      `)
     }
-    res.json({ message: 'Booking deleted successfully' })
   } catch (error) {
-    console.error('Delete booking error:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    console.error('Error serving admin login:', error)
+    res.status(500).send('Error loading admin login page')
   }
 })
 
-// app.get('/admin', (req, res) => {
-//   res.sendFile(path.join(__dirname, 'admin', 'index.html'))
-// })
+// Admin dashboard page - Use existing api/admin/dashboard.js
+app.get('/admin/dashboard', async (req, res) => {
+  try {
+    const dashboardFilePath = path.join(
+      process.cwd(),
+      'api',
+      'admin',
+      'dashboard.js'
+    )
 
-// Replace your admin route in server/index.js with this Vercel-compatible version:
+    if (fs.existsSync(dashboardFilePath)) {
+      console.log('Using existing api/admin/dashboard.js for dashboard page')
+      await executeAPIFile('admin/dashboard.js', req, res)
+    } else {
+      // Check if there's an index.html in server/dashboard
+      const htmlPath = path.join(__dirname, 'dashboard', 'index.html')
+      if (fs.existsSync(htmlPath)) {
+        console.log('Using server/dashboard/index.html')
+        const htmlContent = fs.readFileSync(htmlPath, 'utf8')
 
-// Remove this (causes error in Vercel):
-// app.get('/admin', (req, res) => {
-//   res.sendFile(path.join(__dirname, 'admin', 'index.html'))
-// })
-
-// Replace with this embedded HTML (works in Vercel):
-app.get('/admin', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ethiopian Coffee Tours - Admin Dashboard</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-            body { font-family: 'Inter', sans-serif; }
-            .booking-card { transition: all 0.3s ease; }
-            .booking-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-            .sidebar-item { transition: all 0.2s ease; }
-            .sidebar-item:hover { background: rgba(249, 115, 22, 0.1); color: #ea580c; }
-            .sidebar-item.active { background: #ea580c; color: white; }
-            .stats-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-            .stats-card-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-            .stats-card-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-            .stats-card-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-        </style>
-    </head>
-    <body class="bg-gray-50">
-        <!-- Your beautiful admin dashboard HTML goes here -->
-        <!-- Copy the full HTML from the modern dashboard artifact -->
-        
-        <div class="min-h-screen bg-gradient-to-br from-orange-400 via-red-500 to-pink-500 flex items-center justify-center p-4" id="loginScreen">
-            <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-                <div class="text-center mb-8">
-                    <div class="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i data-lucide="coffee" class="w-8 h-8 text-white"></i>
-                    </div>
-                    <h1 class="text-2xl font-bold text-gray-800">Ethiopian Coffee Tours</h1>
-                    <p class="text-gray-600">Admin Dashboard</p>
-                </div>
-                
-                <form id="loginForm" class="space-y-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                        <div class="relative">
-                            <input type="text" id="username" class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Enter username" required>
-                            <i data-lucide="user" class="w-5 h-5 text-gray-400 absolute left-3 top-3.5"></i>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                        <div class="relative">
-                            <input type="password" id="password" class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Enter password" required>
-                            <i data-lucide="lock" class="w-5 h-5 text-gray-400 absolute left-3 top-3.5"></i>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600 transition duration-200">
-                        Sign In
-                    </button>
-                </form>
-                
-                <div id="message" class="mt-4 p-3 rounded hidden"></div>
-                
-                <div class="mt-6 text-center text-sm text-gray-600">
-                    <p>Demo: admin / secure_admin_password_123</p>
-                </div>
-            </div>
-        </div>
-
-        <script>
-            lucide.createIcons();
-            
-            document.getElementById('loginForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
-                
-                try {
-                    const response = await fetch('/api/admin/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, password }),
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        localStorage.setItem('authToken', data.token);
-                        showMessage('Login successful! Redirecting...', 'success');
-                        setTimeout(() => {
-                            window.location.href = '/admin/dashboard';
-                        }, 1000);
-                    } else {
-                        showMessage(data.error || 'Login failed', 'error');
-                    }
-                } catch (error) {
-                    showMessage('Login failed: ' + error.message, 'error');
-                }
-            });
-
-            function showMessage(message, type) {
-                const messageDiv = document.getElementById('message');
-                messageDiv.textContent = message;
-                messageDiv.className = \`mt-4 p-3 rounded \${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}\`;
-                messageDiv.classList.remove('hidden');
+        // Inject auth check
+        const modifiedHtml = htmlContent.replace(
+          '</head>',
+          `<script>
+            if (!localStorage.getItem('authToken')) {
+              window.location.href = '/admin';
             }
-        </script>
-    </body>
-    </html>
-  `)
+          </script></head>`
+        )
+
+        res.setHeader('Content-Type', 'text/html')
+        res.send(modifiedHtml)
+      } else {
+        // Fallback dashboard
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Admin Dashboard</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+          </head>
+          <body class="bg-gray-100">
+            <script>
+              if (!localStorage.getItem('authToken')) {
+                window.location.href = '/admin';
+              }
+            </script>
+            <div class="p-8">
+              <h1 class="text-3xl font-bold mb-6">Admin Dashboard</h1>
+              <p class="text-gray-600 mb-4">Dashboard loaded successfully!</p>
+              <button onclick="localStorage.removeItem('authToken'); window.location.href='/admin'" class="bg-red-500 text-white px-4 py-2 rounded">Logout</button>
+            </div>
+          </body>
+          </html>
+        `)
+      }
+    }
+  } catch (error) {
+    console.error('Error serving admin dashboard:', error)
+    res.status(500).send('Error loading admin dashboard')
+  }
 })
 
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Unhandled error:', error)
-  res.status(500).json({ error: 'Internal server error' })
+// Handle /admin/dashboard/ (with trailing slash)
+app.get('/admin/dashboard/', (req, res) => {
+  res.redirect('/admin/dashboard')
 })
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' })
+  res.status(404).json({
+    error: 'Route not found',
+    availableRoutes: [
+      'GET /admin - Admin login page',
+      'GET /admin/dashboard - Admin dashboard',
+      'POST /api/admin/login - Admin login API',
+      'GET /api/admin/bookings - Get bookings API',
+      'GET /api/health - Health check',
+    ],
+  })
 })
 
-// Initialize database and start server
-initializeDatabase().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-    console.log(`Admin dashboard: http://localhost:${PORT}/admin`)
-  })
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Local development server running on port ${PORT}`)
+  console.log(`📊 Admin login: http://localhost:${PORT}/admin`)
+  console.log(`📋 Admin dashboard: http://localhost:${PORT}/admin/dashboard`)
+  console.log(``)
+  console.log(`📁 Using existing API files:`)
+  console.log(`   - Login Page: api/admin.js`)
+  console.log(`   - Dashboard: api/admin/dashboard.js`)
+  console.log(`   - Login API: api/admin/login.js`)
+  console.log(`   - Bookings API: api/admin/bookings.js`)
+  console.log(``)
+  console.log(`🔄 Routes are forwarded to your existing API files!`)
 })
