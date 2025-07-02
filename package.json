@@ -24,14 +24,15 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.344.0",
-    "mysql2": "^3.6.5",
     "nodemailer": "^6.9.7",
+    "pg": "^8.16.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.8.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@types/pg": "^8.15.4",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

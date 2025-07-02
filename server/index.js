@@ -1,10 +1,11 @@
+// server/index.js - Updated for PostgreSQL/Neon
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import compression from 'compression'
 import { body, validationResult } from 'express-validator'
-import mysql from 'mysql2/promise'
+import pg from 'pg'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import nodemailer from 'nodemailer'
@@ -12,10 +13,12 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+const { Pool } = pg
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-dotenv.config()
+// Load .env from parent directory (root)
+dotenv.config({ path: path.join(__dirname, '../.env') })
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -48,7 +51,8 @@ app.use(
     },
   })
 )
-// Optimized CORS configuration
+
+// CORS configuration
 app.use(
   cors({
     origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
@@ -58,26 +62,24 @@ app.use(
   })
 )
 
-// Add compression for better performance
 app.use(compression())
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
 })
 app.use(limiter)
 
-// Booking rate limiting (more restrictive)
 const bookingLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // limit each IP to 5 booking attempts per hour
+  windowMs: 60 * 60 * 1000,
+  max: 5,
 })
 
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
-// Add request logging for monitoring performance
+// Request logging
 app.use((req, res, next) => {
   const start = Date.now()
   res.on('finish', () => {
@@ -87,24 +89,17 @@ app.use((req, res, next) => {
   next()
 })
 
-// Database configuration - Optimized for performance
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3308,
-  user: process.env.DB_USER || 'root',
-  waitForConnections: true,
-  connectionLimit: 20, // Increased for better concurrency
-  queueLimit: 0,
-  acquireTimeout: 60000, // 60 seconds
-  timeout: 60000, // 60 seconds
-  reconnect: true,
-  charset: 'utf8mb4',
-}
-
-const databaseName = process.env.DB_NAME || 'tour_booking_system'
-
-// Create database connection pool
-const pool = mysql.createPool(dbConfig)
+// PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.DB_URL,
+  ssl:
+    process.env.NODE_ENV === 'production'
+      ? { rejectUnauthorized: false }
+      : false,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+})
 
 // Email configuration
 const transporter = nodemailer.createTransport({
@@ -120,108 +115,62 @@ const transporter = nodemailer.createTransport({
 // Initialize database
 async function initializeDatabase() {
   try {
-    const connection = await pool.getConnection()
-
-    // Create database if it doesn't exist
-    await connection.execute(`CREATE DATABASE IF NOT EXISTS ${databaseName}`)
-    await connection.query(`USE ${databaseName}`)
+    const client = await pool.connect()
 
     // Create bookings table
-    await connection.execute(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS bookings (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         full_name VARCHAR(255) NOT NULL,
-        age INT NOT NULL,
+        age INTEGER NOT NULL,
         email VARCHAR(255) NOT NULL,
         phone VARCHAR(50) NOT NULL,
         country VARCHAR(100) NOT NULL,
-        booking_type ENUM('individual', 'group') NOT NULL,
-        number_of_people INT DEFAULT 1,
+        booking_type VARCHAR(20) CHECK (booking_type IN ('individual', 'group')) NOT NULL,
+        number_of_people INTEGER DEFAULT 1,
         selected_package VARCHAR(255) NOT NULL,
-        status ENUM('pending', 'confirmed', 'cancelled') DEFAULT 'pending',
+        status VARCHAR(20) CHECK (status IN ('pending', 'confirmed', 'cancelled')) DEFAULT 'pending',
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_email (email),
-        INDEX idx_created_at (created_at),
-        INDEX idx_status (status)
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `)
 
-    // Database migration - Add missing columns if they don't exist
-    const migrations = [
-      {
-        name: 'selected_package',
-        sql: `ALTER TABLE bookings ADD COLUMN selected_package VARCHAR(255) NOT NULL DEFAULT 'southern-ethiopia'`,
-      },
-      {
-        name: 'status',
-        sql: `ALTER TABLE bookings ADD COLUMN status ENUM('pending', 'confirmed', 'cancelled') DEFAULT 'pending'`,
-      },
-      {
-        name: 'notes',
-        sql: `ALTER TABLE bookings ADD COLUMN notes TEXT`,
-      },
-      {
-        name: 'updated_at',
-        sql: `ALTER TABLE bookings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
-      },
-      {
-        name: 'idx_email',
-        sql: `CREATE INDEX idx_email ON bookings(email)`,
-      },
-      {
-        name: 'idx_created_at',
-        sql: `CREATE INDEX idx_created_at ON bookings(created_at)`,
-      },
-      {
-        name: 'idx_status',
-        sql: `CREATE INDEX idx_status ON bookings(status)`,
-      },
-    ]
-
-    for (const migration of migrations) {
-      try {
-        await connection.execute(migration.sql)
-        console.log(`✅ Added ${migration.name} to bookings table`)
-      } catch (error) {
-        if (
-          error.code === 'ER_DUP_FIELDNAME' ||
-          error.code === 'ER_DUP_KEYNAME'
-        ) {
-          console.log(`ℹ️  ${migration.name} already exists`)
-        } else {
-          console.error(`❌ Error adding ${migration.name}:`, error.message)
-        }
-      }
-    }
+    // Create indexes
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email)'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at)'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)'
+    )
 
     // Create admin users table
-    await connection.execute(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS admin_users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         username VARCHAR(100) UNIQUE NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role ENUM('admin', 'manager') DEFAULT 'admin',
+        role VARCHAR(20) CHECK (role IN ('admin', 'manager')) DEFAULT 'admin',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP NULL
       )
     `)
 
     // Create default admin user if none exists
-    const [adminUsers] = await connection.execute(
+    const adminCheck = await client.query(
       'SELECT COUNT(*) as count FROM admin_users'
     )
-    if (adminUsers[0].count === 0) {
+    if (parseInt(adminCheck.rows[0].count) === 0) {
       const defaultPassword = process.env.ADMIN_PASSWORD || 'admin123'
       const hashedPassword = await bcrypt.hash(defaultPassword, 12)
 
-      await connection.execute(
-        `
-        INSERT INTO admin_users (username, email, password_hash, role) 
-        VALUES (?, ?, ?, ?)
-      `,
+      await client.query(
+        `INSERT INTO admin_users (username, email, password_hash, role) 
+         VALUES ($1, $2, $3, $4)`,
         [
           'admin',
           process.env.ADMIN_EMAIL || 'admin@ethiopiancoffeetrip.com',
@@ -234,14 +183,14 @@ async function initializeDatabase() {
       console.log('Default password:', defaultPassword)
     }
 
-    connection.release()
+    client.release()
     console.log('Database initialized successfully')
   } catch (error) {
     console.error('Database initialization error:', error)
   }
 }
 
-// JWT middleware for admin authentication
+// JWT middleware
 const authenticateAdmin = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '')
@@ -256,20 +205,20 @@ const authenticateAdmin = async (req, res, next) => {
       token,
       process.env.JWT_SECRET || 'your-secret-key'
     )
-    const connection = await pool.getConnection()
+    const client = await pool.connect()
 
-    const [users] = await connection.execute(
-      'SELECT id, username, email, role FROM admin_users WHERE id = ?',
+    const users = await client.query(
+      'SELECT id, username, email, role FROM admin_users WHERE id = $1',
       [decoded.userId]
     )
 
-    connection.release()
+    client.release()
 
-    if (users.length === 0) {
+    if (users.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid token.' })
     }
 
-    req.user = users[0]
+    req.user = users.rows[0]
     next()
   } catch (error) {
     res.status(401).json({ error: 'Invalid token.' })
@@ -298,18 +247,6 @@ async function sendEmail(to, subject, html, cc = null) {
   }
 }
 
-// Validation rules
-const bookingValidation = [
-  body('fullName').trim().isLength({ min: 2, max: 255 }).escape(),
-  body('age').isInt({ min: 18, max: 100 }),
-  body('email').isEmail().normalizeEmail(),
-  body('phone').trim().isLength({ min: 5, max: 50 }).escape(),
-  body('country').trim().isLength({ min: 2, max: 100 }).escape(),
-  body('bookingType').isIn(['individual', 'group']),
-  body('numberOfPeople').optional().isInt({ min: 1, max: 20 }),
-  body('selectedPackage').trim().isLength({ min: 1, max: 255 }).escape(),
-]
-
 // Routes
 
 // Health check
@@ -318,150 +255,148 @@ app.get('/api/health', (req, res) => {
 })
 
 // Submit booking
-app.post(
-  '/api/bookings',
-  bookingLimiter,
-  bookingValidation,
-  async (req, res) => {
+app.post('/api/bookings', bookingLimiter, async (req, res) => {
+  try {
+    const {
+      fullName,
+      age,
+      email,
+      phone,
+      country,
+      bookingType,
+      numberOfPeople,
+      selectedPackage,
+    } = req.body
+
+    if (
+      !fullName ||
+      !age ||
+      !email ||
+      !phone ||
+      !country ||
+      !bookingType ||
+      !selectedPackage
+    ) {
+      return res.status(400).json({ error: 'Missing required fields' })
+    }
+
+    const client = await pool.connect()
+
     try {
-      const errors = validationResult(req)
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() })
+      await client.query('BEGIN')
+
+      // Check for duplicate bookings
+      const existingBookings = await client.query(
+        `SELECT id FROM bookings 
+         WHERE email = $1 AND selected_package = $2 
+         AND (status IS NULL OR status != 'cancelled') 
+         LIMIT 1`,
+        [email, selectedPackage]
+      )
+
+      if (existingBookings.rows.length > 0) {
+        await client.query('ROLLBACK')
+        return res.status(409).json({
+          error:
+            'A booking with this email already exists for the selected package.',
+        })
       }
 
-      const {
-        fullName,
-        age,
-        email,
-        phone,
-        country,
-        bookingType,
-        numberOfPeople,
-        selectedPackage,
-      } = req.body
-
-      const connection = await pool.getConnection()
-
-      try {
-        // Use transaction for better performance and data consistency
-        await connection.beginTransaction()
-
-        // Check for duplicate bookings (same email and package) - Optimized query
-        const [existingBookings] = await connection.execute(
-          'SELECT id FROM bookings WHERE email = ? AND selected_package = ? AND (status IS NULL OR status != "cancelled") LIMIT 1',
-          [email, selectedPackage]
-        )
-
-        if (existingBookings.length > 0) {
-          await connection.rollback()
-          return res.status(409).json({
-            error:
-              'A booking with this email already exists for the selected package.',
-          })
-        }
-
-        // Insert booking - Optimized with better field mapping
-        const [result] = await connection.execute(
-          `
-        INSERT INTO bookings (
+      // Insert booking
+      const result = await client.query(
+        `INSERT INTO bookings (
           full_name, age, email, phone, country, booking_type, 
           number_of_people, selected_package, status, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
-      `,
-          [
-            fullName,
-            age,
-            email,
-            phone,
-            country,
-            bookingType,
-            bookingType === 'group' ? numberOfPeople : 1,
-            selectedPackage,
-          ]
-        )
-
-        await connection.commit()
-        res.status(201).json({
-          message: 'Booking submitted successfully',
-          bookingId: result.insertId,
-        })
-      } catch (error) {
-        await connection.rollback()
-        throw error
-      } finally {
-        connection.release()
-      }
-    } catch (error) {
-      console.error('Booking submission error:', error)
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
-)
-
-// Admin login
-app.post(
-  '/api/admin/login',
-  [
-    body('username').trim().isLength({ min: 1 }).escape(),
-    body('password').isLength({ min: 1 }),
-  ],
-  async (req, res) => {
-    try {
-      const errors = validationResult(req)
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() })
-      }
-
-      const { username, password } = req.body
-      const connection = await pool.getConnection()
-
-      const [users] = await connection.execute(
-        'SELECT id, username, email, password_hash, role FROM admin_users WHERE username = ?',
-        [username]
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW()) 
+        RETURNING id`,
+        [
+          fullName,
+          age,
+          email,
+          phone,
+          country,
+          bookingType,
+          bookingType === 'group' ? numberOfPeople : 1,
+          selectedPackage,
+        ]
       )
 
-      if (users.length === 0) {
-        connection.release()
-        return res.status(401).json({ error: 'Invalid credentials' })
-      }
-
-      const user = users[0]
-      const isValidPassword = await bcrypt.compare(password, user.password_hash)
-
-      if (!isValidPassword) {
-        connection.release()
-        return res.status(401).json({ error: 'Invalid credentials' })
-      }
-
-      // Update last login
-      await connection.execute(
-        'UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
-        [user.id]
-      )
-
-      connection.release()
-
-      const token = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '24h' }
-      )
-
-      res.json({
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-        },
+      await client.query('COMMIT')
+      res.status(201).json({
+        message: 'Booking submitted successfully',
+        bookingId: result.rows[0].id,
       })
     } catch (error) {
-      console.error('Login error:', error)
-      res.status(500).json({ error: 'Internal server error' })
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
     }
+  } catch (error) {
+    console.error('Booking submission error:', error)
+    res.status(500).json({ error: 'Internal server error' })
   }
-)
+})
+
+// Admin login
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body
+
+    if (!username || !password) {
+      return res
+        .status(400)
+        .json({ error: 'Username and password are required' })
+    }
+
+    const client = await pool.connect()
+
+    const users = await client.query(
+      'SELECT id, username, email, password_hash, role FROM admin_users WHERE username = $1',
+      [username]
+    )
+
+    if (users.rows.length === 0) {
+      client.release()
+      return res.status(401).json({ error: 'Invalid credentials' })
+    }
+
+    const user = users.rows[0]
+    const isValidPassword = await bcrypt.compare(password, user.password_hash)
+
+    if (!isValidPassword) {
+      client.release()
+      return res.status(401).json({ error: 'Invalid credentials' })
+    }
+
+    // Update last login
+    await client.query(
+      'UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    )
+
+    client.release()
+
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    )
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+    })
+  } catch (error) {
+    console.error('Login error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
 
 // Get all bookings (admin only)
 app.get('/api/admin/bookings', authenticateAdmin, async (req, res) => {
@@ -479,50 +414,53 @@ app.get('/api/admin/bookings', authenticateAdmin, async (req, res) => {
     let countQuery = 'SELECT COUNT(*) as total FROM bookings WHERE 1=1'
     const params = []
     const countParams = []
+    let paramIndex = 1
 
-    // Add search filter
     if (search) {
-      query += ' AND (full_name LIKE ? OR email LIKE ? OR phone LIKE ?)'
-      countQuery += ' AND (full_name LIKE ? OR email LIKE ? OR phone LIKE ?)'
+      query += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
+        paramIndex + 1
+      } OR phone ILIKE $${paramIndex + 2})`
+      countQuery += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
+        paramIndex + 1
+      } OR phone ILIKE $${paramIndex + 2})`
       const searchParam = `%${search}%`
       params.push(searchParam, searchParam, searchParam)
       countParams.push(searchParam, searchParam, searchParam)
+      paramIndex += 3
     }
 
-    // Add status filter
     if (status) {
-      query += ' AND status = ?'
-      countQuery += ' AND status = ?'
+      query += ` AND status = $${paramIndex}`
+      countQuery += ` AND status = $${paramIndex}`
       params.push(status)
       countParams.push(status)
+      paramIndex += 1
     }
 
-    // Add package filter
     if (packageFilter) {
-      query += ' AND selected_package LIKE ?'
-      countQuery += ' AND selected_package LIKE ?'
+      query += ` AND selected_package ILIKE $${paramIndex}`
+      countQuery += ` AND selected_package ILIKE $${paramIndex}`
       params.push(`%${packageFilter}%`)
       countParams.push(`%${packageFilter}%`)
+      paramIndex += 1
     }
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?'
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${
+      paramIndex + 1
+    }`
     params.push(parseInt(limit), parseInt(offset))
 
-    const connection = await pool.getConnection()
-
-    const [bookings] = await connection.execute(query, params)
-    const [countResult] = await connection.execute(countQuery, countParams)
-
-    connection.release()
-
-    console.log('Bookings:', bookings)
+    const client = await pool.connect()
+    const bookings = await client.query(query, params)
+    const countResult = await client.query(countQuery, countParams)
+    client.release()
 
     res.json({
-      bookings,
-      total: countResult[0].total,
+      bookings: bookings.rows,
+      total: parseInt(countResult.rows[0].total),
       page: parseInt(page),
       limit: parseInt(limit),
-      totalPages: Math.ceil(countResult[0].total / limit),
+      totalPages: Math.ceil(countResult.rows[0].total / limit),
     })
   } catch (error) {
     console.error('Get bookings error:', error)
@@ -530,175 +468,43 @@ app.get('/api/admin/bookings', authenticateAdmin, async (req, res) => {
   }
 })
 
-// Update booking status (admin only)
-app.patch(
-  '/api/admin/bookings/:id',
-  authenticateAdmin,
-  [
-    body('status').isIn(['pending', 'confirmed', 'cancelled']),
-    body('notes').optional().trim().escape(),
-  ],
-  async (req, res) => {
-    try {
-      const errors = validationResult(req)
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() })
-      }
-
-      const { id } = req.params
-      const { status, notes } = req.body
-
-      const connection = await pool.getConnection()
-
-      await connection.execute(
-        'UPDATE bookings SET status = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [status, notes || null, id]
-      )
-
-      connection.release()
-
-      res.json({ message: 'Booking updated successfully' })
-    } catch (error) {
-      console.error('Update booking error:', error)
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
-)
-
-// Send confirmation email (admin only)
-app.post(
-  '/api/admin/bookings/:id/send-email',
-  authenticateAdmin,
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const connection = await pool.getConnection()
-
-      const [bookings] = await connection.execute(
-        'SELECT * FROM bookings WHERE id = ?',
-        [id]
-      )
-
-      connection.release()
-
-      if (bookings.length === 0) {
-        return res.status(404).json({ error: 'Booking not found' })
-      }
-
-      const booking = bookings[0]
-
-      const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #6F4E37;">Booking Confirmation</h2>
-        <p>Dear ${booking.full_name},</p>
-        <p>Your booking for the Ethiopian Coffee Origin Trip has been confirmed!</p>
-        
-        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #6F4E37; margin-top: 0;">Booking Details</h3>
-          <p><strong>Booking ID:</strong> #${booking.id}</p>
-          <p><strong>Package:</strong> ${booking.selected_package}</p>
-          <p><strong>Status:</strong> ${booking.status}</p>
-          <p><strong>Booking Type:</strong> ${booking.booking_type}</p>
-          ${
-            booking.booking_type === 'group'
-              ? `<p><strong>Number of People:</strong> ${booking.number_of_people}</p>`
-              : ''
-          }
-        </div>
-        
-        <p>We look forward to welcoming you on this amazing journey!</p>
-        
-        <p>Best regards,<br>
-        Ethiopian Coffee Origin Trip Team</p>
-      </div>
-    `
-
-      await sendEmail(
-        booking.email,
-        'Booking Confirmation - Ethiopian Coffee Origin Trip',
-        emailHtml
-      )
-
-      res.json({ message: 'Confirmation email sent successfully' })
-    } catch (error) {
-      console.error('Send email error:', error)
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
-)
-
-// Export bookings as CSV (admin only)
-app.get('/api/admin/bookings/export', authenticateAdmin, async (req, res) => {
+// Update booking status
+app.patch('/api/admin/bookings/:id', authenticateAdmin, async (req, res) => {
   try {
-    const connection = await pool.getConnection()
+    const { id } = req.params
+    const { status, notes } = req.body
 
-    const [bookings] = await connection.execute(`
-      SELECT 
-        id, full_name, email, phone, country, age, booking_type, 
-        number_of_people, selected_package, status, created_at
-      FROM bookings 
-      ORDER BY created_at DESC
-    `)
+    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' })
+    }
 
-    connection.release()
+    const client = await pool.connect()
 
-    // Generate CSV
-    const headers = [
-      'ID',
-      'Full Name',
-      'Email',
-      'Phone',
-      'Country',
-      'Age',
-      'Booking Type',
-      'Number of People',
-      'Selected Package',
-      'Status',
-      'Created At',
-    ]
+    await client.query(
+      'UPDATE bookings SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+      [status, notes || null, id]
+    )
 
-    let csv = headers.join(',') + '\n'
+    client.release()
 
-    bookings.forEach((booking) => {
-      const row = [
-        booking.id,
-        `"${booking.full_name}"`,
-        booking.email,
-        `"${booking.phone}"`,
-        `"${booking.country}"`,
-        booking.age,
-        booking.booking_type,
-        booking.number_of_people,
-        `"${booking.selected_package}"`,
-        booking.status,
-        booking.created_at.toISOString(),
-      ]
-      csv += row.join(',') + '\n'
-    })
-
-    res.setHeader('Content-Type', 'text/csv')
-    res.setHeader('Content-Disposition', 'attachment; filename=bookings.csv')
-    res.send(csv)
+    res.json({ message: 'Booking updated successfully' })
   } catch (error) {
-    console.error('Export bookings error:', error)
+    console.error('Update booking error:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
 
-// Serve admin dashboard
-app.use('/admin', express.static(path.join(__dirname, 'admin')))
-
-// Delete a booking by ID
+// Delete booking
 app.delete('/api/bookings/:id', async (req, res) => {
   try {
     const { id } = req.params
-    const connection = await pool.getConnection()
-    const [result] = await connection.execute(
-      'DELETE FROM bookings WHERE id = ?',
-      [id]
-    )
-    connection.release()
-    if (result.affectedRows === 0) {
+    const client = await pool.connect()
+    const result = await client.query('DELETE FROM bookings WHERE id = $1', [
+      id,
+    ])
+    client.release()
+
+    if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Booking not found' })
     }
     res.json({ message: 'Booking deleted successfully' })
@@ -706,6 +512,11 @@ app.delete('/api/bookings/:id', async (req, res) => {
     console.error('Delete booking error:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
+})
+
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin', 'index.html'))
 })
 
 // Error handling middleware
