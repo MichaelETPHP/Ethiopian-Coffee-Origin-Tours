@@ -1,325 +1,206 @@
-/**
- * Admin Bookings API Handler
- * Manages CRUD operations for bookings with proper authentication,
- * validation, error handling, and response formatting.
- * 
- * @route GET /api/admin/bookings - Fetch paginated bookings with filters
- * @route PATCH /api/admin/bookings - Update booking status
- * @auth Required - Admin/Manager role
- */
+// api/admin/bookings.js - Simple working version
+import jwt from 'jsonwebtoken'
+import pg from 'pg'
 
-import { getPool, executeQuery } from '../../lib/db.js'
-import { 
-  authenticateAdmin, 
-  setCorsHeaders, 
-  handleOptions 
-} from '../../lib/auth.js'
-import { 
-  sanitizeQuery, 
-  statusUpdateValidation, 
-  handleValidationErrors 
-} from '../../lib/validation.js'
-import { 
-  sendStatusUpdate, 
-  sendBookingConfirmation 
-} from '../../lib/email.js'
-import { 
-  BOOKING_STATUS, 
-  MESSAGES 
-} from '../../lib/constants.js'
+const { Pool } = pg
 
-/**
- * Main handler function
- */
+// Create database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.DB_URL,
+  ssl:
+    process.env.NODE_ENV === 'production'
+      ? { rejectUnauthorized: false }
+      : false,
+  max: 10,
+})
+
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true)
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
+  )
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  )
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end()
+    return
+  }
+
+  // Simple authentication check
+  const token = req.headers.authorization?.replace('Bearer ', '')
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' })
+  }
+
   try {
-    // Setup CORS headers
-    setCorsHeaders(res)
-    if (handleOptions(req, res)) return
-
-    // Authenticate admin user
-    const authResult = await authenticateAdmin(req)
-    if (!authResult.success) {
-      return sendErrorResponse(res, authResult.error, authResult.status)
-    }
-
-    // Route to appropriate method handler
-    switch (req.method) {
-      case 'GET':
-        return await handleGetBookings(req, res, authResult.user)
-      case 'PATCH':
-        return await handleUpdateBooking(req, res, authResult.user)
-      default:
-        return sendErrorResponse(res, 'Method not allowed', 405)
-    }
+    // Verify token
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || 'your-secret-key'
+    )
+    console.log('Token verified for user:', decoded.username)
   } catch (error) {
-    console.error('Admin bookings handler error:', error)
-    return sendErrorResponse(res, 'Internal server error', 500)
+    return res.status(401).json({ error: 'Invalid token' })
+  }
+
+  // Handle different methods
+  if (req.method === 'GET') {
+    return await getBookings(req, res)
+  } else if (req.method === 'PATCH') {
+    return await updateBooking(req, res)
+  } else {
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 }
 
-/**
- * Handle GET requests - Fetch bookings with pagination and filters
- */
-async function handleGetBookings(req, res, user) {
+// Get all bookings
+async function getBookings(req, res) {
   try {
-    // Sanitize and validate query parameters
-    const filters = sanitizeQuery(req.query)
-    const { page, limit, search, status, package: packageFilter } = filters
+    const {
+      page = 1,
+      limit = 50,
+      search = '',
+      status = '',
+      package: packageFilter = '',
+    } = req.query
 
-    // Build dynamic query with parameterized inputs
-    const queryBuilder = new BookingsQueryBuilder()
-    const { query, countQuery, params, countParams } = queryBuilder
-      .addSearch(search)
-      .addStatusFilter(status)
-      .addPackageFilter(packageFilter)
-      .addPagination(page, limit)
-      .build()
+    console.log('Getting bookings with filters:', {
+      page,
+      limit,
+      search,
+      status,
+      packageFilter,
+    })
 
-    // Execute queries concurrently for better performance
-    const [bookingsResult, countResult] = await Promise.all([
-      executeQuery(query, params),
-      executeQuery(countQuery, countParams)
-    ])
+    const offset = (page - 1) * limit
 
-    const total = parseInt(countResult.rows[0]?.total || 0)
-    const totalPages = Math.ceil(total / limit)
+    let query = 'SELECT * FROM bookings WHERE 1=1'
+    let countQuery = 'SELECT COUNT(*) as total FROM bookings WHERE 1=1'
+    const params = []
+    const countParams = []
+    let paramIndex = 1
 
-    // Format response data
-    const responseData = {
-      bookings: bookingsResult.rows.map(formatBookingForResponse),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      },
-      filters: {
-        search: search || null,
-        status: status || null,
-        package: packageFilter || null
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        requestedBy: user.username
-      }
+    // Add search filter
+    if (search) {
+      query += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
+        paramIndex + 1
+      } OR phone ILIKE $${paramIndex + 2})`
+      countQuery += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
+        paramIndex + 1
+      } OR phone ILIKE $${paramIndex + 2})`
+      const searchParam = `%${search}%`
+      params.push(searchParam, searchParam, searchParam)
+      countParams.push(searchParam, searchParam, searchParam)
+      paramIndex += 3
     }
 
-    return sendSuccessResponse(res, responseData)
+    // Add status filter
+    if (status) {
+      query += ` AND status = $${paramIndex}`
+      countQuery += ` AND status = $${paramIndex}`
+      params.push(status)
+      countParams.push(status)
+      paramIndex += 1
+    }
 
+    // Add package filter
+    if (packageFilter) {
+      query += ` AND selected_package ILIKE $${paramIndex}`
+      countQuery += ` AND selected_package ILIKE $${paramIndex}`
+      params.push(`%${packageFilter}%`)
+      countParams.push(`%${packageFilter}%`)
+      paramIndex += 1
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${
+      paramIndex + 1
+    }`
+    params.push(parseInt(limit), parseInt(offset))
+
+    const client = await pool.connect()
+
+    try {
+      console.log('Executing query:', query)
+      console.log('With params:', params)
+
+      const [bookingsResult, countResult] = await Promise.all([
+        client.query(query, params),
+        client.query(countQuery, countParams),
+      ])
+
+      console.log('Found', bookingsResult.rows.length, 'bookings')
+
+      res.status(200).json({
+        success: true,
+        bookings: bookingsResult.rows,
+        total: parseInt(countResult.rows[0]?.total || 0),
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil((countResult.rows[0]?.total || 0) / limit),
+      })
+    } finally {
+      client.release()
+    }
   } catch (error) {
     console.error('Get bookings error:', error)
-    return sendErrorResponse(res, 'Failed to fetch bookings', 500, {
-      code: 'FETCH_BOOKINGS_ERROR',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    res.status(500).json({
+      error: 'Failed to fetch bookings',
+      details:
+        process.env.NODE_ENV === 'development' ? error.message : undefined,
     })
   }
 }
 
-/**
- * Handle PATCH requests - Update booking status
- */
-async function handleUpdateBooking(req, res, user) {
+// Update booking status
+async function updateBooking(req, res) {
   try {
     const { id } = req.query
-    if (!id) {
-      return sendErrorResponse(res, 'Booking ID is required', 400)
-    }
-
-    // Validate request body
-    await Promise.all(statusUpdateValidation.map(validation => validation.run(req)))
-    const validationErrors = handleValidationErrors(req, res)
-    if (validationErrors) return
-
     const { status, notes } = req.body
 
-    // Verify booking exists and get current data
-    const bookingResult = await executeQuery(
-      'SELECT * FROM bookings WHERE id = $1',
-      [id]
-    )
+    console.log('Updating booking', id, 'to status:', status)
 
-    if (bookingResult.rows.length === 0) {
-      return sendErrorResponse(res, 'Booking not found', 404)
+    if (!id) {
+      return res.status(400).json({ error: 'Booking ID is required' })
     }
 
-    const currentBooking = bookingResult.rows[0]
-    const oldStatus = currentBooking.status
-
-    // Prevent unnecessary updates
-    if (currentBooking.status === status && currentBooking.notes === notes) {
-      return sendSuccessResponse(res, {
-        message: 'Booking already has the requested status',
-        booking: formatBookingForResponse(currentBooking)
-      })
+    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' })
     }
 
-    // Update booking with audit trail
-    const updateResult = await executeQuery(
-      `UPDATE bookings 
-       SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $3 
-       RETURNING *`,
-      [status, notes, id]
-    )
+    const client = await pool.connect()
 
-    const updatedBooking = updateResult.rows[0]
+    try {
+      const result = await client.query(
+        'UPDATE bookings SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
+        [status, notes || null, id]
+      )
 
-    // Log admin action
-    console.log(`Admin action: ${user.username} updated booking ${id} from ${oldStatus} to ${status}`)
-
-    // Send status update email asynchronously (don't wait for completion)
-    if (oldStatus !== status) {
-      setImmediate(async () => {
-        try {
-          await sendStatusUpdate(updatedBooking, oldStatus)
-          
-          // Send confirmation email for confirmed bookings
-          if (status === BOOKING_STATUS.CONFIRMED) {
-            await sendBookingConfirmation(updatedBooking)
-          }
-        } catch (emailError) {
-          console.error('Email notification failed:', emailError)
-        }
-      })
-    }
-
-    return sendSuccessResponse(res, {
-      message: MESSAGES.SUCCESS.BOOKING_UPDATED || 'Booking updated successfully',
-      booking: formatBookingForResponse(updatedBooking),
-      changes: {
-        status: { from: oldStatus, to: status },
-        notes: { from: currentBooking.notes, to: notes },
-        updatedBy: user.username,
-        updatedAt: updatedBooking.updated_at
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Booking not found' })
       }
-    })
 
+      console.log('Booking updated successfully')
+
+      res.status(200).json({
+        success: true,
+        message: 'Booking updated successfully',
+        booking: result.rows[0],
+      })
+    } finally {
+      client.release()
+    }
   } catch (error) {
     console.error('Update booking error:', error)
-    return sendErrorResponse(res, 'Failed to update booking', 500, {
-      code: 'UPDATE_BOOKING_ERROR',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    res.status(500).json({
+      error: 'Failed to update booking',
+      details:
+        process.env.NODE_ENV === 'development' ? error.message : undefined,
     })
   }
-}
-
-/**
- * Query builder class for dynamic booking queries
- */
-class BookingsQueryBuilder {
-  constructor() {
-    this.baseQuery = 'SELECT * FROM bookings WHERE 1=1'
-    this.baseCountQuery = 'SELECT COUNT(*) as total FROM bookings WHERE 1=1'
-    this.params = []
-    this.countParams = []
-    this.paramIndex = 1
-  }
-
-  addSearch(search) {
-    if (search) {
-      const searchCondition = ` AND (full_name ILIKE $${this.paramIndex} OR email ILIKE $${this.paramIndex + 1} OR phone ILIKE $${this.paramIndex + 2})`
-      this.baseQuery += searchCondition
-      this.baseCountQuery += searchCondition
-      
-      const searchParam = `%${search}%`
-      this.params.push(searchParam, searchParam, searchParam)
-      this.countParams.push(searchParam, searchParam, searchParam)
-      this.paramIndex += 3
-    }
-    return this
-  }
-
-  addStatusFilter(status) {
-    if (status) {
-      this.baseQuery += ` AND status = $${this.paramIndex}`
-      this.baseCountQuery += ` AND status = $${this.paramIndex}`
-      this.params.push(status)
-      this.countParams.push(status)
-      this.paramIndex += 1
-    }
-    return this
-  }
-
-  addPackageFilter(packageFilter) {
-    if (packageFilter) {
-      this.baseQuery += ` AND selected_package ILIKE $${this.paramIndex}`
-      this.baseCountQuery += ` AND selected_package ILIKE $${this.paramIndex}`
-      this.params.push(`%${packageFilter}%`)
-      this.countParams.push(`%${packageFilter}%`)
-      this.paramIndex += 1
-    }
-    return this
-  }
-
-  addPagination(page, limit) {
-    const offset = (page - 1) * limit
-    this.baseQuery += ` ORDER BY created_at DESC LIMIT $${this.paramIndex} OFFSET $${this.paramIndex + 1}`
-    this.params.push(parseInt(limit), parseInt(offset))
-    return this
-  }
-
-  build() {
-    return {
-      query: this.baseQuery,
-      countQuery: this.baseCountQuery,
-      params: this.params,
-      countParams: this.countParams
-    }
-  }
-}
-
-/**
- * Format booking object for API response
- */
-function formatBookingForResponse(booking) {
-  return {
-    id: booking.id,
-    customer: {
-      fullName: booking.full_name,
-      email: booking.email,
-      phone: booking.phone,
-      age: booking.age,
-      country: booking.country
-    },
-    booking: {
-      type: booking.booking_type,
-      numberOfPeople: booking.number_of_people,
-      selectedPackage: booking.selected_package,
-      status: booking.status,
-      notes: booking.notes
-    },
-    timestamps: {
-      createdAt: booking.created_at,
-      updatedAt: booking.updated_at
-    }
-  }
-}
-
-/**
- * Send standardized success response
- */
-function sendSuccessResponse(res, data, status = 200) {
-  return res.status(status).json({
-    success: true,
-    data,
-    timestamp: new Date().toISOString()
-  })
-}
-
-/**
- * Send standardized error response
- */
-function sendErrorResponse(res, message, status = 500, meta = {}) {
-  return res.status(status).json({
-    success: false,
-    error: {
-      message,
-      status,
-      ...meta
-    },
-    timestamp: new Date().toISOString()
-  })
 }
