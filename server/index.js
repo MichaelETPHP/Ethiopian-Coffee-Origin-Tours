@@ -514,9 +514,128 @@ app.delete('/api/bookings/:id', async (req, res) => {
   }
 })
 
+// app.get('/admin', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'admin', 'index.html'))
+// })
 
+// Replace your admin route in server/index.js with this Vercel-compatible version:
+
+// Remove this (causes error in Vercel):
+// app.get('/admin', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'admin', 'index.html'))
+// })
+
+// Replace with this embedded HTML (works in Vercel):
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin', 'index.html'))
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Ethiopian Coffee Tours - Admin Dashboard</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            body { font-family: 'Inter', sans-serif; }
+            .booking-card { transition: all 0.3s ease; }
+            .booking-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+            .sidebar-item { transition: all 0.2s ease; }
+            .sidebar-item:hover { background: rgba(249, 115, 22, 0.1); color: #ea580c; }
+            .sidebar-item.active { background: #ea580c; color: white; }
+            .stats-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            .stats-card-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+            .stats-card-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+            .stats-card-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <!-- Your beautiful admin dashboard HTML goes here -->
+        <!-- Copy the full HTML from the modern dashboard artifact -->
+        
+        <div class="min-h-screen bg-gradient-to-br from-orange-400 via-red-500 to-pink-500 flex items-center justify-center p-4" id="loginScreen">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="coffee" class="w-8 h-8 text-white"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-800">Ethiopian Coffee Tours</h1>
+                    <p class="text-gray-600">Admin Dashboard</p>
+                </div>
+                
+                <form id="loginForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                        <div class="relative">
+                            <input type="text" id="username" class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Enter username" required>
+                            <i data-lucide="user" class="w-5 h-5 text-gray-400 absolute left-3 top-3.5"></i>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                        <div class="relative">
+                            <input type="password" id="password" class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Enter password" required>
+                            <i data-lucide="lock" class="w-5 h-5 text-gray-400 absolute left-3 top-3.5"></i>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600 transition duration-200">
+                        Sign In
+                    </button>
+                </form>
+                
+                <div id="message" class="mt-4 p-3 rounded hidden"></div>
+                
+                <div class="mt-6 text-center text-sm text-gray-600">
+                    <p>Demo: admin / secure_admin_password_123</p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            lucide.createIcons();
+            
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                try {
+                    const response = await fetch('/api/admin/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        localStorage.setItem('authToken', data.token);
+                        showMessage('Login successful! Redirecting...', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/admin/dashboard';
+                        }, 1000);
+                    } else {
+                        showMessage(data.error || 'Login failed', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Login failed: ' + error.message, 'error');
+                }
+            });
+
+            function showMessage(message, type) {
+                const messageDiv = document.getElementById('message');
+                messageDiv.textContent = message;
+                messageDiv.className = \`mt-4 p-3 rounded \${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}\`;
+                messageDiv.classList.remove('hidden');
+            }
+        </script>
+    </body>
+    </html>
+  `)
 })
 
 // Error handling middleware

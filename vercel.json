@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "name": "ethiopian-coffee-tours",
   "builds": [
     {
       "src": "package.json",
@@ -16,6 +17,10 @@
       "dest": "/api/$1"
     },
     {
+      "src": "/admin",
+      "dest": "/server/index.js"
+    },
+    {
       "handle": "filesystem"
     },
     {
@@ -24,8 +29,14 @@
     }
   ],
   "functions": {
+    "server/index.js": {
+      "maxDuration": 10
+    },
     "api/**/*.js": {
       "maxDuration": 10
     }
+  },
+  "env": {
+    "NODE_ENV": "production"
   }
 }
