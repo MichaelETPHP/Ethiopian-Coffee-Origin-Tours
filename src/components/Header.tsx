@@ -81,7 +81,7 @@ const Header: React.FC = () => {
                 {/* Logo container */}
                 <span className='flex items-center justify-center h-14 w-14 rounded-full bg-white border-2 border-black shadow-md'>
                   <img
-                    src='/src/static/Logo_file.png'
+                    src='/Logo_file.png'
                     alt='Ethiopian Coffee Logo'
                     className='h-10 w-10'
                     loading='lazy'
