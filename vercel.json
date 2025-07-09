@@ -1,12 +1,16 @@
 {
   "version": 2,
   "rewrites": [
+
+
     {
       "source": "/admin",
       "destination": "/admin/index.html",
       "source": "/(.*)",
       "destination": "/"
     },
+
+
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
@@ -16,32 +20,5 @@
     "api/**/*.js": {
       "maxDuration": 10
     }
-  },
-  "headers": [
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-        {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
-      ]
-    }
+  }
 }
