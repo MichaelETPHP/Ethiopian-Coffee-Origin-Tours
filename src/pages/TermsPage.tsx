@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Coffee, Shield, FileText } from 'lucide-react'
+import { ArrowLeft, Coffee, Shield, FileText, Download } from 'lucide-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 
@@ -60,6 +60,22 @@ const TermsPage: React.FC = () => {
                 Origin Trip (ECOT) (hereinafter referred to as "The Company"),
                 participants acknowledge and agree to the following terms and
                 conditions:
+              </p>
+            </div>
+
+            {/* Download PDF Button */}
+            <div className='mb-8 text-center'>
+              <a
+                href='/PDF/ECOT_Terms_and_Conditions.pdf'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='inline-flex items-center space-x-3 bg-coffee-600 text-white px-6 py-4 rounded-xl font-inter font-semibold hover:bg-coffee-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl'
+              >
+                <Download className='h-5 w-5' />
+                <span>Download Terms & Conditions PDF</span>
+              </a>
+              <p className='text-coffee-600 font-inter text-sm mt-3'>
+                Opens in new tab • PDF format
               </p>
             </div>
 

@@ -936,8 +936,8 @@ const BookingPage: React.FC = () => {
                 {/* Disclaimer */}
                 <div className='text-xs text-coffee-500 font-inter text-center bg-cream-50 p-4 rounded-xl'>
                   <p>
-                    * This is a booking request. We will contact you within 24
-                    hours to confirm availability and finalize your reservation.
+                    * Booking request received. We'll contact you within 8 hours
+                    to finalize your booking.
                   </p>
                 </div>
               </form>
