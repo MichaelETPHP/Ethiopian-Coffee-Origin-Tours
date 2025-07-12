@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Coffee,
   Instagram,
@@ -173,16 +174,15 @@ const Footer: React.FC = () => {
               © 2025 Ethiopian Coffee Origin Trip. All rights reserved.
             </p>
             <div className='flex flex-wrap justify-center sm:justify-end space-x-4 sm:space-x-6'>
-              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map(
-                (link) => (
-                  <button
-                    key={link}
-                    className='text-coffee-400 font-inter text-xs sm:text-sm hover:text-cream-200 transition-colors duration-200 min-h-[44px] flex items-center touch-manipulation'
-                  >
-                    {link}
-                  </button>
-                )
-              )}
+              {[{ label: 'Terms of Service', path: '/terms' }].map((link) => (
+                <Link
+                  key={link.label}
+                  to={link.path}
+                  className='text-coffee-400 font-inter text-xs sm:text-sm hover:text-cream-200 transition-colors duration-200 min-h-[44px] flex items-center touch-manipulation'
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
         </div>

@@ -133,16 +133,6 @@ const TourPackages: React.FC = () => {
                 {/* Image Overlay for better text readability */}
                 <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent'></div>
 
-                {/* Price Badge - Top Right */}
-                <div className='absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-coffee-800 px-3 sm:px-4 py-2 rounded-full shadow-lg'>
-                  <div className='text-base sm:text-lg font-playfair font-bold'>
-                    {tour.price}
-                  </div>
-                  <div className='text-xs font-inter text-coffee-600 text-center'>
-                    per person
-                  </div>
-                </div>
-
                 {/* Duration Badge - Top Left */}
                 <div className='absolute top-4 left-4 bg-coffee-600 text-white px-3 py-1.5 rounded-full text-xs sm:text-sm font-inter font-medium shadow-lg'>
                   {tour.duration}
@@ -212,7 +202,7 @@ const TourPackages: React.FC = () => {
                     <div className='flex items-center space-x-2 mb-2'>
                       <MapPin className='h-4 w-4 text-coffee-500 flex-shrink-0' />
                       <span className='text-sm font-inter font-medium text-coffee-700'>
-                        Regions Visited:
+                        Regions Visit:
                       </span>
                     </div>
                     <div className='flex flex-wrap gap-1.5 sm:gap-2'>
