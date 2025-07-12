@@ -30,7 +30,7 @@ const tourPackages: TourPackage[] = [
     name: 'Complete Ethiopian Coffee Origin Trip 2025',
     dates: 'November 26 – December 6, 2025',
     duration: '11 Days',
-    regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Jimma', 'Kaffa', 'Bebeka'],
+    regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Jimma', 'Kaffa', 'Limu'],
     price: '$2,850',
     description:
       'The ultimate Ethiopian coffee experience. Combine both Southern and Western regions for a comprehensive journey through all major coffee-producing areas of Ethiopia.',
@@ -68,10 +68,10 @@ const tourPackages: TourPackage[] = [
     name: 'Western Ethiopian Coffee Origin Trip 2025',
     dates: 'December 1 – December 6, 2025',
     duration: '6 Days',
-    regions: ['Jimma', 'Kaffa', 'Bebeka'],
+    regions: ['Jimma', 'Kaffa', 'Limu'],
     price: '$1,650',
     description:
-      'Journey to the birthplace of coffee in Western Ethiopia. Explore wild coffee forests in Kaffa, visit historical Jimma, and experience large-scale production at Bebeka Estate.',
+      'Journey to the birthplace of coffee in Western Ethiopia. Explore wild coffee forests in Kaffa, visit historical Jimma, and experience traditional coffee production in Limu.',
     image:
       'https://media.tacdn.com/media/attractions-splice-spp-674x446/0f/e4/16/96.jpg',
     highlights: ['Coffee Birthplace', 'Wild Forests', 'Historical Sites'],

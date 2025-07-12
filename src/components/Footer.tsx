@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
+import ReactCountryFlag from 'react-country-flag'
 import {
   Coffee,
   Instagram,
@@ -38,7 +39,7 @@ const Footer: React.FC = () => {
       {/* Main Footer - Mobile Optimized */}
       <div className='py-12 sm:py-16'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8'>
             {/* Brand Section */}
             <div className='lg:col-span-1 sm:col-span-2 lg:col-span-1'>
               <div className='flex items-center space-x-2 mb-4'>
@@ -79,52 +80,6 @@ const Footer: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Links */}
-            <div>
-              <h4 className='text-base sm:text-lg font-playfair font-semibold text-cream-100 mb-4'>
-                Quick Links
-              </h4>
-              <ul className='space-y-3'>
-                {[
-                  { label: 'Home', id: 'hero' },
-                  { label: 'Tour Packages', id: 'tour-packages' },
-                  { label: 'About', id: 'about' },
-                  { label: 'Contact', id: 'contact' },
-                ].map((link) => (
-                  <li key={link.id}>
-                    <button
-                      onClick={() => scrollToSection(link.id)}
-                      className='text-coffee-300 font-inter hover:text-cream-200 transition-colors duration-200 hover:translate-x-1 transform text-sm sm:text-base min-h-[44px] flex items-center touch-manipulation'
-                    >
-                      {link.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Experiences */}
-            <div>
-              <h4 className='text-base sm:text-lg font-playfair font-semibold text-cream-100 mb-4'>
-                Experiences
-              </h4>
-              <ul className='space-y-3'>
-                {[
-                  'Farm-to-Cup Tours',
-                  'Coffee Processing',
-                  'Cultural Immersion',
-                  'Direct Trade',
-                  'Origin Exploration',
-                ].map((experience) => (
-                  <li key={experience}>
-                    <span className='text-coffee-300 font-inter hover:text-cream-200 transition-colors duration-200 cursor-pointer text-sm sm:text-base'>
-                      {experience}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
             {/* Contact Info */}
             <div>
               <h4 className='text-base sm:text-lg font-playfair font-semibold text-cream-100 mb-4'>
@@ -161,6 +116,72 @@ const Footer: React.FC = () => {
                 <span>Book a Tour</span>
                 <ArrowRight className='h-4 w-4' />
               </button>
+            </div>
+
+            {/* International Representatives */}
+            <div>
+              <h4 className='text-base sm:text-lg font-playfair font-semibold text-cream-100 mb-4'>
+                Our International Representatives
+              </h4>
+              <div className='space-y-6'>
+                {/* United Kingdom */}
+                <div className='bg-coffee-700/30 rounded-lg p-4'>
+                  <h5 className='text-sm sm:text-base font-playfair font-semibold text-cream-200 mb-3 flex items-center space-x-2'>
+                    <ReactCountryFlag
+                      countryCode='GB'
+                      svg
+                      style={{ width: '20px', height: '15px' }}
+                    />
+                    <span>Great Britain</span>
+                  </h5>
+                  <div className='space-y-2'>
+                    <p className='text-coffee-300 font-inter text-sm'>
+                      <strong>Mr. Abreham Hagos</strong>
+                    </p>
+                    <div className='flex items-start space-x-2'>
+                      <Mail className='h-3 w-3 text-coffee-400 flex-shrink-0 mt-1' />
+                      <span className='text-coffee-300 font-inter text-xs sm:text-sm'>
+                        ecoteff@gmail.com
+                      </span>
+                    </div>
+                    <div className='flex items-start space-x-2'>
+                      <Phone className='h-3 w-3 text-coffee-400 flex-shrink-0 mt-1' />
+                      <span className='text-coffee-300 font-inter text-xs sm:text-sm'>
+                        +41 76 537 81 87 (WhatsApp)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Netherlands */}
+                <div className='bg-coffee-700/30 rounded-lg p-4'>
+                  <h5 className='text-sm sm:text-base font-playfair font-semibold text-cream-200 mb-3 flex items-center space-x-2'>
+                    <ReactCountryFlag
+                      countryCode='NL'
+                      svg
+                      style={{ width: '20px', height: '15px' }}
+                    />
+                    <span>Netherlands</span>
+                  </h5>
+                  <div className='space-y-2'>
+                    <p className='text-coffee-300 font-inter text-sm'>
+                      <strong>Mr. Samuel Tesfaye</strong>
+                    </p>
+                    <div className='flex items-start space-x-2'>
+                      <Mail className='h-3 w-3 text-coffee-400 flex-shrink-0 mt-1' />
+                      <span className='text-coffee-300 font-inter text-xs sm:text-sm'>
+                        samueltesfay01@gmail.com
+                      </span>
+                    </div>
+                    <div className='flex items-start space-x-2'>
+                      <Phone className='h-3 w-3 text-coffee-400 flex-shrink-0 mt-1' />
+                      <span className='text-coffee-300 font-inter text-xs sm:text-sm'>
+                        +31 6 30 32 25 91 (WhatsApp)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

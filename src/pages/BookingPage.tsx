@@ -239,7 +239,7 @@ const packages = [
     price: '$2,850',
     image:
       'https://media.istockphoto.com/id/1922227078/photo/farmer-talking-to-tourists-in-a-coffee-plantation.jpg?s=612x612&w=0&k=20&c=H0o0PqoMp8H5ROw7_VtrURwYoSEpfDfKDmcG1iq38is=',
-    regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Jimma', 'Kaffa', 'Bebeka'],
+    regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Jimma', 'Kaffa', 'Limu'],
     highlights: [
       'Complete Experience',
       'All Major Regions',
@@ -269,7 +269,7 @@ const packages = [
     price: '$1,650',
     image:
       'https://media.tacdn.com/media/attractions-splice-spp-674x446/0f/e4/16/96.jpg',
-    regions: ['Jimma', 'Kaffa', 'Bebeka'],
+    regions: ['Jimma', 'Kaffa', 'Limu'],
     highlights: ['Coffee Birthplace', 'Wild Forests', 'Historical Sites'],
   },
 ]
