@@ -684,8 +684,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
               {/* Disclaimer */}
               <div className='text-xs text-coffee-500 font-inter text-center bg-cream-50 p-4 rounded-xl'>
                 <p>
-                  * This is a booking request. We will contact you within 24
-                  hours to confirm availability and finalize your reservation.
+                  * This is a booking request. We will contact you shortly to
+                  confirm availability and finalize your reservation.
                 </p>
               </div>
             </form>
@@ -700,8 +700,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
               </h3>
               <p className='text-coffee-600 font-inter mb-6 max-w-md mx-auto text-sm sm:text-base px-4'>
                 Thank you for your interest in our Ethiopian Coffee Origin Trip.
-                We will contact you within 24 hours to confirm your booking
-                details.
+                We will contact you shortly to confirm your booking details.
               </p>
               <div className='bg-coffee-50 border border-coffee-200 rounded-xl p-4 text-left max-w-md mx-auto'>
                 <h4 className='font-playfair font-semibold text-coffee-800 mb-2 text-sm sm:text-base'>

@@ -3,7 +3,7 @@ import Header from '../components/Header'
 import Hero from '../components/Hero'
 import TourPackages from '../components/TourPackages'
 import About from '../components/About'
-import Testimonials from '../components/Testimonials'
+// import Testimonials from '../components/Testimonials'
 import Footer from '../components/Footer'
 import CookiesPopup from '../components/CookiesPopup'
 
@@ -28,7 +28,7 @@ const HomePage: React.FC = () => {
       <Hero />
       <TourPackages />
       <About />
-      <Testimonials />
+      {/* <Testimonials /> */}
       <Footer />
       <CookiesPopup
         onAccept={handleAcceptCookies}
