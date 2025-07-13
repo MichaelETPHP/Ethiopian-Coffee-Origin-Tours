@@ -1,6 +1,10 @@
 // api/admin/bookings.js - Simple working version
 import jwt from 'jsonwebtoken'
 import pg from 'pg'
+import {
+  sendPaymentConfirmationEmail,
+  sendStatusUpdateEmail,
+} from '../../lib/email.js'
 
 const { Pool } = pg
 
@@ -185,12 +189,29 @@ async function updateBooking(req, res) {
         return res.status(404).json({ error: 'Booking not found' })
       }
 
+      const booking = result.rows[0]
       console.log('Booking updated successfully')
+
+      // Send email notifications
+      try {
+        if (status === 'confirmed') {
+          // Send payment confirmation email
+          await sendPaymentConfirmationEmail(booking)
+          console.log('✅ Payment confirmation email sent to:', booking.email)
+        } else {
+          // Send status update email for other status changes
+          await sendStatusUpdateEmail(booking, 'pending', status)
+          console.log('✅ Status update email sent to:', booking.email)
+        }
+      } catch (emailError) {
+        console.error('❌ Email sending failed:', emailError)
+        // Don't fail the update if email fails
+      }
 
       res.status(200).json({
         success: true,
         message: 'Booking updated successfully',
-        booking: result.rows[0],
+        booking: booking,
       })
     } finally {
       client.release()

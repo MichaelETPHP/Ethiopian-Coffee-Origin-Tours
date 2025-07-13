@@ -14,9 +14,12 @@ A modern, responsive website showcasing authentic coffee tourism experiences in 
 ## 🚀 Tech Stack
 
 - **Frontend**: React 18 with TypeScript
+- **Backend**: Node.js with Express
+- **Database**: PostgreSQL
+- **Authentication**: JWT with bcrypt
 - **Styling**: Tailwind CSS
 - **Build Tool**: Vite
-- **Icons**: Lucide React
+- **Icons**: Lucide React & React Icons
 - **Deployment**: Ready for Vercel/Netlify
 
 ## 📦 Installation
@@ -46,18 +49,25 @@ A modern, responsive website showcasing authentic coffee tourism experiences in 
 ## 🏗️ Project Structure
 
 ```
-src/
-├── components/          # React components
-│   ├── About.tsx       # About section
-│   ├── Booking.tsx     # Booking functionality
-│   ├── Header.tsx      # Navigation header
-│   ├── Hero.tsx        # Hero section
-│   ├── TourPackages.tsx # Tour packages display
-│   └── ...
-├── data/               # Static data
-│   └── tourData.ts     # Tour information
-├── pages/              # Page components
-└── main.tsx           # Application entry point
+├── api/                # API endpoints
+│   ├── admin/         # Admin API routes
+│   │   ├── login.js   # Admin authentication
+│   │   └── bookings.js # Booking management
+│   ├── bookings.js    # Public booking API
+│   └── health.js      # Health check endpoint
+├── lib/               # Utility libraries
+│   ├── auth.js        # Authentication utilities
+│   ├── db.js          # Database configuration
+│   ├── email.js       # Email functionality
+│   └── validation.js  # Input validation
+├── server/            # Express server
+│   └── index.js       # Server entry point
+├── src/               # Frontend React app
+│   ├── components/    # React components
+│   ├── pages/         # Page components
+│   │   └── AdminPage.tsx # Admin dashboard
+│   └── main.tsx       # Application entry point
+└── setup-admin.js     # Admin user setup script
 ```
 
 ## 🎨 Key Components
@@ -95,6 +105,43 @@ Interactive booking modal with:
 - **Sidamo**: Famous for full-bodied, wine-like flavors
 - **Harrar**: Traditional dry-processed beans
 - **Limu**: Balanced, medium-bodied profiles
+
+## 🔐 Admin Dashboard
+
+The application includes a secure admin dashboard for managing bookings and user data:
+
+### Setup Instructions
+
+1. **Set up environment variables**:
+
+   ```bash
+   DATABASE_URL=your_postgresql_connection_string
+   JWT_SECRET=your_jwt_secret_key
+   ```
+
+2. **Create admin user**:
+
+   ```bash
+   node setup-admin.js
+   ```
+
+3. **Access admin dashboard**:
+   Navigate to `/admin` in your browser
+
+4. **Default credentials**:
+
+   - Username: `admin`
+   - Password: `admin123`
+
+   ⚠️ **Important**: Change the default password after first login!
+
+### Admin Features
+
+- **Authentication**: Secure login with JWT tokens
+- **Booking Management**: View, filter, and update booking status
+- **Statistics**: Real-time booking statistics
+- **Search & Filters**: Advanced search and filtering capabilities
+- **Responsive Design**: Works on all devices
 
 ## 🎯 Mission
 

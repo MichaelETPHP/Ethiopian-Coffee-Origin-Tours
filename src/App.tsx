@@ -6,6 +6,7 @@ import BookingPage from './pages/BookingPage'
 import TermsPage from './pages/TermsPage'
 import CookiePolicyPage from './pages/CookiePolicyPage'
 import NotFoundPage from './pages/NotFoundPage'
+import AdminPage from './pages/AdminPage'
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path='/booking' element={<BookingPage />} />
         <Route path='/terms' element={<TermsPage />} />
         <Route path='/cookies' element={<CookiePolicyPage />} />
+        <Route path='/admin' element={<AdminPage />} />
         <Route path='*' element={<NotFoundPage />} />
       </Routes>
     </div>

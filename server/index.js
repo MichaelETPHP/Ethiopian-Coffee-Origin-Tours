@@ -27,7 +27,11 @@ const PORT = process.env.PORT || 3001
 app.use(helmet())
 app.use(
   cors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:5175',
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -58,6 +62,121 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 })
+
+// Initialize database tables
+async function initializeDatabase() {
+  try {
+    console.log('🔧 Initializing database tables...')
+    const client = await pool.connect()
+
+    // Create bookings table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id SERIAL PRIMARY KEY,
+        full_name VARCHAR(255) NOT NULL,
+        age INTEGER NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        country VARCHAR(100) NOT NULL,
+        booking_type VARCHAR(20) CHECK (booking_type IN ('individual', 'group')) NOT NULL,
+        number_of_people INTEGER DEFAULT 1,
+        selected_package VARCHAR(255) NOT NULL,
+        status VARCHAR(20) CHECK (status IN ('pending', 'confirmed', 'cancelled')) DEFAULT 'pending',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    // Create admin_users table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(20) CHECK (role IN ('admin', 'manager')) DEFAULT 'admin',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP NULL
+      )
+    `)
+
+    // Create indexes for better performance
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email)'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at)'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username)'
+    )
+
+    // Create update trigger for bookings
+    await client.query(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+      END;
+      $$ language 'plpgsql'
+    `)
+
+    await client.query(`
+      DROP TRIGGER IF EXISTS update_bookings_updated_at ON bookings;
+      CREATE TRIGGER update_bookings_updated_at 
+        BEFORE UPDATE ON bookings 
+        FOR EACH ROW 
+        EXECUTE FUNCTION update_updated_at_column()
+    `)
+
+    // Check if admin user exists, if not create it
+    const adminCheck = await client.query(
+      'SELECT COUNT(*) as count FROM admin_users WHERE username = $1',
+      ['admin']
+    )
+
+    if (parseInt(adminCheck.rows[0].count) === 0) {
+      console.log('👤 Creating default admin user...')
+      const passwordHash = await bcrypt.hash('admin123', 12)
+
+      await client.query(
+        'INSERT INTO admin_users (username, email, password_hash, role) VALUES ($1, $2, $3, $4)',
+        ['admin', 'admin@ethiopiancoffee.com', passwordHash, 'admin']
+      )
+      console.log('✅ Default admin user created')
+      console.log('   Username: admin')
+      console.log('   Password: admin123')
+    } else {
+      console.log('✅ Admin user already exists')
+    }
+
+    // Insert sample bookings if table is empty
+    const bookingCheck = await client.query(
+      'SELECT COUNT(*) as count FROM bookings'
+    )
+    if (parseInt(bookingCheck.rows[0].count) === 0) {
+      console.log('📊 Creating sample bookings...')
+      await client.query(`
+        INSERT INTO bookings (full_name, age, email, phone, country, booking_type, number_of_people, selected_package, status) VALUES
+        ('John Smith', 35, 'john@example.com', '+1234567890', 'USA', 'individual', 1, 'Yirgacheffe Coffee Tour', 'pending'),
+        ('Maria Garcia', 28, 'maria@example.com', '+1234567891', 'Spain', 'group', 4, 'Sidamo Coffee Experience', 'confirmed'),
+        ('Ahmed Hassan', 42, 'ahmed@example.com', '+1234567892', 'Egypt', 'individual', 1, 'Limu Coffee Journey', 'pending'),
+        ('Sarah Johnson', 31, 'sarah@example.com', '+1234567893', 'Canada', 'group', 2, 'Harar Coffee Adventure', 'confirmed')
+      `)
+      console.log('✅ Sample bookings created')
+    }
+
+    client.release()
+    console.log('✅ Database initialization completed successfully!')
+  } catch (error) {
+    console.error('❌ Database initialization error:', error)
+  }
+}
 
 // JWT middleware
 const authenticateAdmin = async (req, res, next) => {
@@ -103,7 +222,7 @@ async function executeAPIFile(filePath, req, res) {
     }
 
     // Dynamic import the API file
-    const apiModule = await import(`file://${fullPath}?t=${Date.now()}`)
+    const apiModule = await import(`file://${fullPath}`)
 
     // Execute the default handler
     if (apiModule.default && typeof apiModule.default === 'function') {
@@ -136,7 +255,7 @@ app.get('/api/admin/bookings', async (req, res) => {
   await executeAPIFile('admin/bookings.js', req, res)
 })
 
-app.patch('/api/admin/bookings/:id', async (req, res) => {
+app.patch('/api/admin/bookings', async (req, res) => {
   await executeAPIFile('admin/bookings.js', req, res)
 })
 
@@ -149,175 +268,46 @@ app.delete('/api/bookings/:id', async (req, res) => {
   await executeAPIFile('bookings.js', req, res)
 })
 
-// Admin Pages - Use existing API files that return HTML
+// Serve static files for React app (for production)
+app.use(express.static(path.join(process.cwd(), 'dist')))
 
-// Admin login page - Use existing api/admin.js (login page)
-app.get('/admin', async (req, res) => {
-  try {
-    const adminFilePath = path.join(process.cwd(), 'api', 'admin.js')
-
-    if (fs.existsSync(adminFilePath)) {
-      console.log('Using existing api/admin.js for login page')
-      await executeAPIFile('admin.js', req, res)
-    } else {
-      // Fallback simple login if api/admin.js doesn't exist
-      res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Admin Login</title>
-            <script src="https://cdn.tailwindcss.com"></script>
-        </head>
-        <body class="bg-gray-100 min-h-screen flex items-center justify-center">
-            <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-                <h1 class="text-2xl font-bold mb-6 text-center">Admin Login</h1>
-                <form id="loginForm">
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Username</label>
-                        <input type="text" id="username" value="admin" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
-                    </div>
-                    <div class="mb-6">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
-                        <input type="password" id="password" value="secure_admin_password_123" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
-                    </div>
-                    <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Sign In</button>
-                </form>
-                <div id="message" class="mt-4 p-3 rounded hidden"></div>
-            </div>
-            
-            <script>
-                document.getElementById('loginForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const username = document.getElementById('username').value;
-                    const password = document.getElementById('password').value;
-                    
-                    try {
-                        const response = await fetch('/api/admin/login', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username, password }),
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (response.ok) {
-                            localStorage.setItem('authToken', data.token);
-                            window.location.href = '/admin/dashboard';
-                        } else {
-                            document.getElementById('message').innerHTML = '<div class="bg-red-100 text-red-700 p-3 rounded">' + (data.error || 'Login failed') + '</div>';
-                            document.getElementById('message').classList.remove('hidden');
-                        }
-                    } catch (error) {
-                        document.getElementById('message').innerHTML = '<div class="bg-red-100 text-red-700 p-3 rounded">Login failed: ' + error.message + '</div>';
-                        document.getElementById('message').classList.remove('hidden');
-                    }
-                });
-            </script>
-        </body>
-        </html>
-      `)
-    }
-  } catch (error) {
-    console.error('Error serving admin login:', error)
-    res.status(500).send('Error loading admin login page')
+// Handle React routing - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  // Don't handle API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API endpoint not found' })
   }
-})
 
-// Admin dashboard page - Use existing api/admin/dashboard.js
-app.get('/admin/dashboard', async (req, res) => {
-  try {
-    const dashboardFilePath = path.join(
-      process.cwd(),
-      'api',
-      'admin',
-      'dashboard.js'
-    )
-
-    if (fs.existsSync(dashboardFilePath)) {
-      console.log('Using existing api/admin/dashboard.js for dashboard page')
-      await executeAPIFile('admin/dashboard.js', req, res)
-    } else {
-      // Check if there's an index.html in server/dashboard
-      const htmlPath = path.join(__dirname, 'dashboard', 'index.html')
-      if (fs.existsSync(htmlPath)) {
-        console.log('Using server/dashboard/index.html')
-        const htmlContent = fs.readFileSync(htmlPath, 'utf8')
-
-        // Inject auth check
-        const modifiedHtml = htmlContent.replace(
-          '</head>',
-          `<script>
-            if (!localStorage.getItem('authToken')) {
-              window.location.href = '/admin';
-            }
-          </script></head>`
-        )
-
-        res.setHeader('Content-Type', 'text/html')
-        res.send(modifiedHtml)
-      } else {
-        // Fallback dashboard
-        res.send(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Admin Dashboard</title>
-            <script src="https://cdn.tailwindcss.com"></script>
-          </head>
-          <body class="bg-gray-100">
-            <script>
-              if (!localStorage.getItem('authToken')) {
-                window.location.href = '/admin';
-              }
-            </script>
-            <div class="p-8">
-              <h1 class="text-3xl font-bold mb-6">Admin Dashboard</h1>
-              <p class="text-gray-600 mb-4">Dashboard loaded successfully!</p>
-              <button onclick="localStorage.removeItem('authToken'); window.location.href='/admin'" class="bg-red-500 text-white px-4 py-2 rounded">Logout</button>
-            </div>
-          </body>
-          </html>
-        `)
-      }
-    }
-  } catch (error) {
-    console.error('Error serving admin dashboard:', error)
-    res.status(500).send('Error loading admin dashboard')
+  // Serve React app for all other routes
+  const indexPath = path.join(process.cwd(), 'dist', 'index.html')
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath)
+  } else {
+    res.status(404).send('React app not built. Run "npm run build" first.')
   }
-})
-
-// Handle /admin/dashboard/ (with trailing slash)
-app.get('/admin/dashboard/', (req, res) => {
-  res.redirect('/admin/dashboard')
-})
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    error: 'Route not found',
-    availableRoutes: [
-      'GET /admin - Admin login page',
-      'GET /admin/dashboard - Admin dashboard',
-      'POST /api/admin/login - Admin login API',
-      'GET /api/admin/bookings - Get bookings API',
-      'GET /api/health - Health check',
-    ],
-  })
 })
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Local development server running on port ${PORT}`)
-  console.log(`📊 Admin login: http://localhost:${PORT}/admin`)
-  console.log(`📋 Admin dashboard: http://localhost:${PORT}/admin/dashboard`)
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on port ${PORT}`)
+  console.log(`📊 API endpoints available:`)
+  console.log(`   - POST /api/admin/login - Admin login`)
+  console.log(`   - GET /api/admin/bookings - Get bookings`)
+  console.log(`   - PATCH /api/admin/bookings - Update booking`)
+  console.log(`   - POST /api/bookings - Create booking`)
+  console.log(`   - GET /api/health - Health check`)
   console.log(``)
-  console.log(`📁 Using existing API files:`)
-  console.log(`   - Login Page: api/admin.js`)
-  console.log(`   - Dashboard: api/admin/dashboard.js`)
-  console.log(`   - Login API: api/admin/login.js`)
-  console.log(`   - Bookings API: api/admin/bookings.js`)
+  console.log(`🌐 React app should be served by Vite on port 5175`)
+  console.log(`🔗 Admin dashboard: http://localhost:5175/admin`)
   console.log(``)
-  console.log(`🔄 Routes are forwarded to your existing API files!`)
+  console.log(`🔧 Initializing database...`)
+
+  // Initialize database tables
+  await initializeDatabase()
+
+  console.log(``)
+  console.log(`🎉 Server ready! You can now:`)
+  console.log(`   1. Start your React app: npm run dev`)
+  console.log(`   2. Access admin at: http://localhost:5175/admin`)
+  console.log(`   3. Login with: admin / admin123`)
 })

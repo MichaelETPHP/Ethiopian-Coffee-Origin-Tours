@@ -1,5 +1,9 @@
 // api/bookings.js
 import pg from 'pg'
+import {
+  sendBookingConfirmationEmail,
+  sendAdminNotificationEmail,
+} from '../lib/email.js'
 
 const { Pool } = pg
 
@@ -111,7 +115,7 @@ export default async function handler(req, res) {
             full_name, age, email, phone, country, booking_type, 
             number_of_people, selected_package, status, created_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW()) 
-          RETURNING id`,
+          RETURNING *`,
           [
             fullName,
             age,
@@ -124,10 +128,27 @@ export default async function handler(req, res) {
           ]
         )
 
+        const booking = result.rows[0]
+
         await client.query('COMMIT')
+
+        // Send confirmation emails
+        try {
+          // Send confirmation email to customer
+          await sendBookingConfirmationEmail(booking)
+
+          // Send notification email to admin
+          await sendAdminNotificationEmail(booking)
+
+          console.log('✅ Emails sent successfully for booking:', booking.id)
+        } catch (emailError) {
+          console.error('❌ Email sending failed:', emailError)
+          // Don't fail the booking if email fails
+        }
+
         res.status(201).json({
           message: 'Booking submitted successfully',
-          bookingId: result.rows[0].id,
+          bookingId: booking.id,
         })
       } catch (error) {
         await client.query('ROLLBACK')

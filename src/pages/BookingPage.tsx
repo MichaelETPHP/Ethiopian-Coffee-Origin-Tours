@@ -906,6 +906,9 @@ const BookingPage: React.FC = () => {
                       <span className='font-semibold text-lg'>
                         ✓ Booking Submitted Successfully!
                       </span>
+                      <div className='text-sm opacity-90 mt-1'>
+                        Check your email for confirmation details
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -936,8 +939,9 @@ const BookingPage: React.FC = () => {
                 {/* Disclaimer */}
                 <div className='text-xs text-coffee-500 font-inter text-center bg-cream-50 p-4 rounded-xl'>
                   <p>
-                    * Booking request received. We'll contact you within 8 hours
-                    to finalize your booking.
+                    * Booking request received. You'll receive a confirmation
+                    email shortly. We'll contact you within 8 hours to finalize
+                    your booking.
                   </p>
                 </div>
               </form>
