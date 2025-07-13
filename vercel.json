@@ -21,9 +21,6 @@
   "functions": {
     "api/**/*.js": {
       "maxDuration": 30
-    },
-    "server/index.js": {
-      "maxDuration": 30
     }
   },
   "buildCommand": "npm run build",
