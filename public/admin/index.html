@@ -609,6 +609,8 @@
         .getElementById('cancelUpdateBtn')
         .addEventListener('click', () => {
           document.getElementById('updateStatusModal').classList.add('hidden')
+          // Clear the form
+          document.getElementById('updateStatusForm').reset()
         })
 
       document
@@ -638,12 +640,22 @@
               document
                 .getElementById('updateStatusModal')
                 .classList.add('hidden')
+              showPopup('Booking status updated successfully!')
               loadBookings()
+              loadStats() // Refresh stats after update
             } else {
-              alert('Update failed. Please try again.')
+              const data = await response.json()
+              showPopup(
+                data.error || 'Failed to update booking status.',
+                'bg-red-600'
+              )
             }
           } catch (error) {
-            alert('Update failed. Please try again.')
+            console.error('Update error:', error)
+            showPopup(
+              'Failed to update booking status. Please try again.',
+              'bg-red-600'
+            )
           } finally {
             hideLoading()
           }
@@ -751,11 +763,14 @@
 
       async function loadStats() {
         try {
-          const response = await fetch('/api/admin/bookings?limit=1000', {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          })
+          const response = await fetch(
+            `${API_BASE}/admin/bookings?limit=1000`,
+            {
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+            }
+          )
           if (response.ok) {
             const data = await response.json()
             const bookings = data.bookings
@@ -843,7 +858,7 @@
                         <div class="flex space-x-2">
                             <button onclick="openUpdateModal(${booking.id}, '${
             booking.status
-          }', '${booking.notes || ''}')" 
+          }', '${(booking.notes || '').replace(/'/g, "\\'")}')" 
                                     class="text-amber-600 hover:text-amber-800 transition duration-200 p-1 hover:bg-amber-50 rounded">
                                 <i data-lucide="edit" class="h-4 w-4"></i>
                             </button>
@@ -853,10 +868,9 @@
                                     class="text-blue-600 hover:text-blue-800 transition duration-200 p-1 hover:bg-blue-50 rounded">
                                 <i data-lucide="mail" class="h-4 w-4"></i>
                             </button>
-                            <button class="delete-booking-btn" data-booking-id="${
-                              booking.id
-                            }">
-                              <i data-lucide="trash" class="h-4 w-4"></i>
+                            <button onclick="deleteBooking(${booking.id})" 
+                                    class="text-red-600 hover:text-red-800 transition duration-200 p-1 hover:bg-red-50 rounded">
+                                <i data-lucide="trash" class="h-4 w-4"></i>
                             </button>
                         </div>
                     </td>
@@ -899,7 +913,7 @@
       function openUpdateModal(bookingId, currentStatus, currentNotes) {
         document.getElementById('updateBookingId').value = bookingId
         document.getElementById('updateStatus').value = currentStatus
-        document.getElementById('updateNotes').value = currentNotes
+        document.getElementById('updateNotes').value = currentNotes || ''
         document.getElementById('updateStatusModal').classList.remove('hidden')
       }
 
@@ -911,60 +925,70 @@
         showLoading()
         try {
           const response = await fetch(
-            `${API_BASE}/admin/bookings/${bookingId}/send-email`,
+            `${API_BASE}/bookings/${bookingId}/send-email`,
             {
               method: 'POST',
               headers: {
+                'Content-Type': 'application/json',
                 Authorization: `Bearer ${authToken}`,
               },
+              body: JSON.stringify({ emailType: 'payment-confirmation' }),
             }
           )
 
           if (response.ok) {
-            alert('Confirmation email sent successfully!')
+            const data = await response.json()
+            showPopup('Confirmation email sent successfully!')
           } else {
-            alert('Failed to send email. Please try again.')
+            const data = await response.json()
+            showPopup(
+              data.error || 'Failed to send email. Please try again.',
+              'bg-red-600'
+            )
           }
         } catch (error) {
-          alert('Failed to send email. Please try again.')
+          console.error('Email error:', error)
+          showPopup('Failed to send email. Please try again.', 'bg-red-600')
         } finally {
           hideLoading()
         }
       }
 
       async function deleteBooking(bookingId) {
+        if (
+          !confirm(
+            'Are you sure you want to delete this booking? This action cannot be undone.'
+          )
+        ) {
+          return
+        }
+
         showLoading()
         try {
-          const response = await fetch(`/api/bookings/${bookingId}`, {
+          const response = await fetch(`${API_BASE}/bookings/${bookingId}`, {
             method: 'DELETE',
             headers: {
               Authorization: `Bearer ${authToken}`,
             },
           })
+
           if (response.ok) {
             showPopup('Booking deleted successfully!')
             loadBookings()
+            loadStats() // Refresh stats after deletion
           } else {
             const data = await response.json()
             showPopup(data.error || 'Failed to delete booking.', 'bg-red-600')
           }
         } catch (error) {
+          console.error('Delete error:', error)
           showPopup('Failed to delete booking. Please try again.', 'bg-red-600')
         } finally {
           hideLoading()
         }
       }
 
-      // Add event delegation for delete buttons
-      document
-        .getElementById('bookingsTableBody')
-        .addEventListener('click', function (e) {
-          const btn = e.target.closest('.delete-booking-btn')
-          if (btn) {
-            const bookingId = btn.dataset.bookingId
-            deleteBooking(bookingId)
-          }
-        })
+      // Delete functionality is now handled by direct onclick handlers
 
       function showPopup(message, color = 'bg-green-600') {
         const popup = document.getElementById('popup')
