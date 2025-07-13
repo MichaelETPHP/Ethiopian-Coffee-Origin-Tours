@@ -295,6 +295,7 @@ app.listen(PORT, async () => {
   console.log(`   - GET /api/admin/bookings - Get bookings`)
   console.log(`   - PATCH /api/admin/bookings - Update booking`)
   console.log(`   - POST /api/bookings - Create booking`)
+  console.log(`   - DELETE /api/bookings/:id - Delete booking`)
   console.log(`   - GET /api/health - Health check`)
   console.log(``)
   console.log(`🌐 React app should be served by Vite on port 5175`)

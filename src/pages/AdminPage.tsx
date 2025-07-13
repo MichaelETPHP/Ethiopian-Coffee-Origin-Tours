@@ -71,6 +71,10 @@ const AdminPage: React.FC = () => {
     totalPages: 0,
   })
 
+  const [deletingBookings, setDeletingBookings] = useState<Set<number>>(
+    new Set()
+  )
+
   // Check if user is already logged in
   useEffect(() => {
     const token = localStorage.getItem('adminToken')
@@ -223,6 +227,60 @@ const AdminPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error updating booking:', error)
+    }
+  }
+
+  const deleteBooking = async (id: number) => {
+    if (
+      !window.confirm(
+        'Are you sure you want to delete this booking? This action cannot be undone.'
+      )
+    ) {
+      return
+    }
+
+    const token = localStorage.getItem('adminToken')
+
+    if (!token) {
+      logout()
+      return
+    }
+
+    // Set loading state
+    setDeletingBookings((prev) => new Set(prev).add(id))
+
+    try {
+      const response = await fetch(`/api/bookings/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.status === 401) {
+        logout()
+        return
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchBookings() // Refresh the list
+        // Show success message
+        alert('Booking deleted successfully!')
+      } else {
+        alert(data.error || 'Failed to delete booking')
+      }
+    } catch (error) {
+      console.error('Error deleting booking:', error)
+      alert('Failed to delete booking. Please try again.')
+    } finally {
+      // Clear loading state
+      setDeletingBookings((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(id)
+        return newSet
+      })
     }
   }
 
@@ -590,6 +648,18 @@ const AdminPage: React.FC = () => {
                               <option value='confirmed'>Confirmed</option>
                               <option value='cancelled'>Cancelled</option>
                             </select>
+                            <button
+                              onClick={() => deleteBooking(booking.id)}
+                              disabled={deletingBookings.has(booking.id)}
+                              className='text-red-600 hover:text-red-800 transition duration-200 p-1 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed'
+                              title='Delete booking'
+                            >
+                              {deletingBookings.has(booking.id) ? (
+                                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-red-600'></div>
+                              ) : (
+                                <FaTrash className='h-4 w-4' />
+                              )}
+                            </button>
                           </div>
                         </td>
                       </tr>

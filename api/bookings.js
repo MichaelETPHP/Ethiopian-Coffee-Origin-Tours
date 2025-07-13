@@ -1,5 +1,6 @@
 // api/bookings.js
 import pg from 'pg'
+import jwt from 'jsonwebtoken'
 import {
   sendBookingConfirmationEmail,
   sendAdminNotificationEmail,
@@ -38,21 +39,62 @@ export default async function handler(req, res) {
   }
 
   // Handle DELETE requests (for specific booking)
-  if (req.method === 'DELETE' && req.query.id) {
+  if (req.method === 'DELETE') {
     try {
-      const { id } = req.query
-      const client = await pool.connect()
+      // Get ID from URL parameters (req.params) or query parameters (req.query)
+      const id = req.params?.id || req.query?.id
 
-      const result = await client.query('DELETE FROM bookings WHERE id = $1', [
-        id,
-      ])
-      client.release()
-
-      if (result.rowCount === 0) {
-        return res.status(404).json({ error: 'Booking not found' })
+      if (!id) {
+        return res.status(400).json({ error: 'Booking ID is required' })
       }
 
-      res.status(200).json({ message: 'Booking deleted successfully' })
+      // Verify admin authentication
+      const token = req.header('Authorization')?.replace('Bearer ', '')
+      if (!token) {
+        return res
+          .status(401)
+          .json({ error: 'Access denied. No token provided.' })
+      }
+
+      try {
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET || 'your-secret-key'
+        )
+        const client = await pool.connect()
+
+        // Verify admin user exists
+        const adminUser = await client.query(
+          'SELECT id, username, role FROM admin_users WHERE id = $1',
+          [decoded.userId]
+        )
+
+        if (adminUser.rows.length === 0) {
+          client.release()
+          return res.status(401).json({ error: 'Invalid token.' })
+        }
+
+        // Delete the booking
+        const result = await client.query(
+          'DELETE FROM bookings WHERE id = $1',
+          [id]
+        )
+        client.release()
+
+        if (result.rowCount === 0) {
+          return res.status(404).json({ error: 'Booking not found' })
+        }
+
+        console.log(
+          `✅ Booking ${id} deleted by admin ${adminUser.rows[0].username}`
+        )
+        res.status(200).json({
+          success: true,
+          message: 'Booking deleted successfully',
+        })
+      } catch (jwtError) {
+        return res.status(401).json({ error: 'Invalid token.' })
+      }
     } catch (error) {
       console.error('Delete booking error:', error)
       res.status(500).json({ error: 'Internal server error' })
