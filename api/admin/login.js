@@ -120,6 +120,12 @@ export default async function handler(req, res) {
       error: 'Internal server error',
       details:
         process.env.NODE_ENV === 'development' ? error.message : 'Login failed',
+      debug: {
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        hasJwtSecret: !!process.env.JWT_SECRET,
+        nodeEnv: process.env.NODE_ENV,
+        errorType: error.constructor.name,
+      },
     })
   }
 }
