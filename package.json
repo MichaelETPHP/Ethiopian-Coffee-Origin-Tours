@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run build:admin && vite build",
+    "build:admin": "node -e \"const fs=require('fs');const path=require('path');if(!fs.existsSync('dist'))fs.mkdirSync('dist');fs.cpSync('public/admin','dist/admin',{recursive:true});\"",
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server/index.js",
     "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
-    "vercel-build": "vite build",
-    "start": "node server/index.js"
+    "vercel-build": "npm run build",
+    "start": "node server/index.js",
+    "deploy:check": "node deploy.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

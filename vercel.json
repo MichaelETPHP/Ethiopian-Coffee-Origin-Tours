@@ -1,24 +1,32 @@
 {
   "version": 2,
   "rewrites": [
-
-
     {
       "source": "/admin",
-      "destination": "/admin/index.html",
-      "source": "/(.*)",
-      "destination": "/"
+      "destination": "/admin/index.html"
     },
-
-
+    {
+      "source": "/admin/(.*)",
+      "destination": "/admin/index.html"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "functions": {
     "api/**/*.js": {
-      "maxDuration": 10
+      "maxDuration": 30
+    },
+    "server/index.js": {
+      "maxDuration": 30
     }
-  }
+  },
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install"
 }
