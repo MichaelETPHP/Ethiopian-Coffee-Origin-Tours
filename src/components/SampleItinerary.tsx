@@ -72,7 +72,25 @@ const SampleItinerary: React.FC<SampleItineraryProps> = ({ tourId }) => {
       id: tourData.id,
       name: tourData.name,
       dates: tourData.dates,
-      price: tourData.price,
+    },
+  ]
+
+  const tourInfo = [
+    {
+      label: 'Duration',
+      value: tourData.duration,
+    },
+    {
+      label: 'Regions',
+      value: `${tourData.regions.length} Major`,
+    },
+    {
+      label: 'Start/End',
+      value: tourData.startEnd,
+    },
+    {
+      label: 'Group Size',
+      value: '8-18 People',
     },
   ]
 
@@ -96,34 +114,24 @@ const SampleItinerary: React.FC<SampleItineraryProps> = ({ tourId }) => {
 
           {/* Trip Overview Cards - Mobile Optimized */}
           <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mx-auto'>
-            {[
-              {
-                icon: <Calendar className='h-4 w-4 sm:h-5 sm:w-5' />,
-                label: 'Duration',
-                value: tourData.duration,
-              },
-              {
-                icon: <Users className='h-4 w-4 sm:h-5 sm:w-5' />,
-                label: 'Group Size',
-                value: tourData.groupSize,
-              },
-              {
-                icon: <MapPin className='h-4 w-4 sm:h-5 sm:w-5' />,
-                label: 'Regions',
-                value: `${tourData.regions.length} Major`,
-              },
-              {
-                icon: <Star className='h-4 w-4 sm:h-5 sm:w-5' />,
-                label: 'Price',
-                value: tourData.price,
-              },
-            ].map((item, index) => (
+            {tourInfo.map((item, index) => (
               <div
                 key={index}
                 className='bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-cream-200'
               >
                 <div className='text-coffee-600 mb-2 flex justify-center'>
-                  {item.icon}
+                  {index === 0 ? (
+                    <Calendar className='h-4 w-4 sm:h-5 sm:w-5' />
+                  ) : null}
+                  {index === 1 ? (
+                    <MapPin className='h-4 w-4 sm:h-5 sm:w-5' />
+                  ) : null}
+                  {index === 2 ? (
+                    <Clock className='h-4 w-4 sm:h-5 sm:w-5' />
+                  ) : null}
+                  {index === 3 ? (
+                    <Users className='h-4 w-4 sm:h-5 sm:w-5' />
+                  ) : null}
                 </div>
                 <div className='text-sm sm:text-base lg:text-lg font-playfair font-bold text-coffee-800 mb-1'>
                   {item.value}
@@ -162,10 +170,10 @@ const SampleItinerary: React.FC<SampleItineraryProps> = ({ tourId }) => {
             </div>
           </div>
 
-          {/* Regions Visited */}
+          {/* Regions Visit */}
           <div className='bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-cream-200'>
             <h3 className='text-lg sm:text-xl font-playfair font-bold text-coffee-800 mb-6'>
-              Regions Visited
+              Regions Visit
             </h3>
             <div className='grid grid-cols-2 gap-2 sm:gap-3'>
               {tourData.regions.map((region, index) => (

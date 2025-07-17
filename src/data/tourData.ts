@@ -17,7 +17,6 @@ export interface TourPackage {
   regions: string[]
   startEnd: string
   duration: string
-  price: string
   includes: string
   description: string
   overview: string[]
@@ -32,7 +31,6 @@ export const tourPackages: Record<string, TourPackage> = {
     regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Addis Ababa'],
     startEnd: 'Addis Ababa',
     duration: '7 Days',
-    price: '$1,850 USD',
     includes:
       'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
     description:
@@ -200,7 +198,6 @@ export const tourPackages: Record<string, TourPackage> = {
     regions: ['Jimma', 'Kaffa', 'Limu', 'Addis Ababa'],
     startEnd: 'Addis Ababa',
     duration: '6 Days',
-    price: '$1,650 USD',
     includes:
       'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
     description:
@@ -353,7 +350,6 @@ export const tourPackages: Record<string, TourPackage> = {
     ],
     startEnd: 'Addis Ababa',
     duration: '11 Days',
-    price: '$2,850 USD',
     includes:
       'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
     description:

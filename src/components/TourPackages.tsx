@@ -16,7 +16,7 @@ interface TourPackage {
   dates: string
   duration: string
   regions: string[]
-  price: string
+  // price: string
   description: string
   image: string
   highlights: string[]

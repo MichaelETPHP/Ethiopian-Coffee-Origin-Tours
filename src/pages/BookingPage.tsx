@@ -235,42 +235,45 @@ const packages = [
     id: 'complete-ethiopia',
     name: 'Complete Ethiopian Coffee Origin Trip 2025',
     dates: 'November 26 – December 6, 2025',
-    duration: '11 Days',
-    price: '$2,850',
-    image:
-      'https://media.istockphoto.com/id/1922227078/photo/farmer-talking-to-tourists-in-a-coffee-plantation.jpg?s=612x612&w=0&k=20&c=H0o0PqoMp8H5ROw7_VtrURwYoSEpfDfKDmcG1iq38is=',
-    regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Jimma', 'Kaffa', 'Limu'],
-    highlights: [
-      'Complete Experience',
-      'All Major Regions',
-      'Comprehensive Journey',
+    regions: [
+      'Sidama',
+      'Yirgacheffe',
+      'Guji',
+      'Jimma',
+      'Kaffa',
+      'Limu',
+      'Addis Ababa',
     ],
+    startEnd: 'Addis Ababa',
+    duration: '11 Days',
+    includes:
+      'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
+    description:
+      'Experience the complete Ethiopian coffee journey. This comprehensive 11-day trip covers all major coffee regions, from the legendary Yirgacheffe to the wild forests of Kaffa.',
   },
   {
     id: 'southern-ethiopia',
     name: 'Southern Ethiopian Coffee Origin Trip 2025',
     dates: 'November 26 – December 2, 2025',
+    regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Addis Ababa'],
+    startEnd: 'Addis Ababa',
     duration: '7 Days',
-    price: '$1,850',
-    image:
-      'https://media.istockphoto.com/id/1487292164/photo/mature-woman-drinking-coffee-on-agricultural-field.jpg?s=612x612&w=0&k=20&c=a-mO8R03_WamsxEWRP8ZMMcc8C53N1VEEu_iNxnIpwA=',
-    regions: ['Sidama', 'Yirgacheffe', 'Guji'],
-    highlights: [
-      'Sidama Cooperatives',
-      'Yirgacheffe Terroir',
-      'Guji Innovation',
-    ],
+    includes:
+      'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
+    description:
+      "Step into the birthplace of Arabica coffee. This 7-day immersive journey takes you deep into Ethiopia's iconic coffee-producing regions.",
   },
   {
     id: 'western-ethiopia',
     name: 'Western Ethiopian Coffee Origin Trip 2025',
     dates: 'December 1 – December 6, 2025',
+    regions: ['Jimma', 'Kaffa', 'Limu', 'Addis Ababa'],
+    startEnd: 'Addis Ababa',
     duration: '6 Days',
-    price: '$1,650',
-    image:
-      'https://media.tacdn.com/media/attractions-splice-spp-674x446/0f/e4/16/96.jpg',
-    regions: ['Jimma', 'Kaffa', 'Limu'],
-    highlights: ['Coffee Birthplace', 'Wild Forests', 'Historical Sites'],
+    includes:
+      'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
+    description:
+      'Journey to the birthplace of coffee in Western Ethiopia. Explore wild coffee forests, visit historical sites, and experience the origins of coffee culture.',
   },
 ]
 
@@ -543,32 +546,22 @@ const BookingPage: React.FC = () => {
 
                       <div className='flex flex-col sm:flex-row'>
                         {/* Image */}
-                        <div className='relative w-full sm:w-48 h-48 sm:h-auto'>
+                        {/* <div className='relative w-full sm:w-48 h-48 sm:h-auto'>
                           <img
-                            src={pkg.image}
+                            src={`https://via.placeholder.com/200x150`} // Placeholder image
                             alt={pkg.name}
                             className='w-full h-full object-cover rounded-t-2xl sm:rounded-l-2xl sm:rounded-tr-none'
                           />
                           <div className='absolute top-4 left-4 bg-coffee-600 text-white px-3 py-1 rounded-full text-sm font-inter font-medium'>
                             {pkg.duration}
                           </div>
-                        </div>
+                        </div> */}
 
                         {/* Content */}
-                        <div className='flex-1 p-6'>
-                          <div className='flex items-start justify-between mb-4'>
-                            <h3 className='text-lg font-playfair font-bold text-coffee-800 leading-tight'>
-                              {pkg.name}
-                            </h3>
-                            <div className='text-right ml-4'>
-                              <div className='text-2xl font-playfair font-bold text-coffee-800'>
-                                {pkg.price}
-                              </div>
-                              <div className='text-sm text-coffee-600'>
-                                per person
-                              </div>
-                            </div>
-                          </div>
+                        <div className='p-4 sm:p-6 flex-grow'>
+                          <h3 className='text-lg sm:text-xl font-playfair font-bold text-coffee-800 mb-3'>
+                            {pkg.name} <br></br> ( {pkg.duration} )
+                          </h3>
 
                           <div className='flex items-center space-x-2 mb-4'>
                             <Calendar className='h-4 w-4 text-coffee-500' />
@@ -588,16 +581,9 @@ const BookingPage: React.FC = () => {
                             ))}
                           </div>
 
-                          <div className='flex flex-wrap gap-2'>
-                            {pkg.highlights.map((highlight, index) => (
-                              <span
-                                key={index}
-                                className='bg-earth-100 text-earth-700 px-2 py-1 rounded-full text-xs font-inter'
-                              >
-                                {highlight}
-                              </span>
-                            ))}
-                          </div>
+                          <p className='text-coffee-600 font-inter text-sm leading-relaxed'>
+                            {pkg.description}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -884,7 +870,7 @@ const BookingPage: React.FC = () => {
                       <option value=''>Choose a package...</option>
                       {packages.map((pkg) => (
                         <option key={pkg.id} value={pkg.id}>
-                          {pkg.name} - {pkg.dates} ({pkg.price})
+                          {pkg.name} - {pkg.dates}
                         </option>
                       ))}
                     </select>

@@ -14,8 +14,8 @@ import {
 interface BookingModalProps {
   isOpen: boolean
   onClose: () => void
+  packages: Array<{ id: string; name: string; dates: string }>
   selectedPackage?: string
-  packages: Array<{ id: string; name: string; dates: string; price: string }>
 }
 
 interface FormData {
@@ -444,9 +444,6 @@ const BookingModal: React.FC<BookingModalProps> = ({
                     <p className='text-xs sm:text-sm text-coffee-600'>
                       {selectedPackageDetails.dates}
                     </p>
-                    <p className='text-base sm:text-lg font-bold text-coffee-800 mt-1'>
-                      {selectedPackageDetails.price}
-                    </p>
                   </div>
                 </div>
               )}
@@ -653,7 +650,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                     <option value=''>Choose a package...</option>
                     {packages.map((pkg) => (
                       <option key={pkg.id} value={pkg.id}>
-                        {pkg.name} - {pkg.dates} ({pkg.price})
+                        {pkg.name} - {pkg.dates}
                       </option>
                     ))}
                   </select>

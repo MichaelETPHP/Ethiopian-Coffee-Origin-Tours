@@ -55,7 +55,31 @@ const ItineraryPage: React.FC = () => {
       id: tourData.id,
       name: tourData.name,
       dates: tourData.dates,
-      price: tourData.price,
+    },
+  ]
+
+  const tourDataForBooking = {
+    id: tourData.id,
+    name: tourData.name,
+    dates: tourData.dates,
+  }
+
+  const tourInfo = [
+    {
+      label: 'Duration',
+      value: tourData.duration,
+    },
+    {
+      label: 'Regions',
+      value: `${tourData.regions.length} Major`,
+    },
+    {
+      label: 'Start/End',
+      value: tourData.startEnd,
+    },
+    {
+      label: 'Group Size',
+      value: '8-18 People',
     },
   ]
 
@@ -131,13 +155,15 @@ const ItineraryPage: React.FC = () => {
 
             {/* Tour Stats */}
             <div className='flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-6 text-sm sm:text-base'>
-              <div className='bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20'>
-                <span className='font-semibold'>{tourData.duration}</span>
-              </div>
-
-              <div className='bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20'>
-                <span className='font-bold text-lg'>{tourData.price}</span>
-              </div>
+              {tourInfo.map((item, index) => (
+                <div
+                  key={index}
+                  className='bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20'
+                >
+                  <span className='font-semibold'>{item.label}:</span>{' '}
+                  {item.value}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -224,10 +250,10 @@ const ItineraryPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Regions Visited */}
+            {/* Regions Visit */}
             <div className='bg-cream-50 rounded-2xl p-6 sm:p-8'>
               <h3 className='text-xl sm:text-2xl font-playfair font-bold text-coffee-800 mb-6'>
-                Regions Visited
+                Regions Visit
               </h3>
               <div className='grid grid-cols-2 gap-3 mb-6'>
                 {tourData.regions.map((region, index) => (
@@ -575,7 +601,7 @@ const ItineraryPage: React.FC = () => {
       <BookingModal
         isOpen={isBookingModalOpen}
         onClose={closeBookingModal}
-        selectedPackage={tourData.id}
+        selectedPackage={tourDataForBooking}
         packages={packagesForModal}
       />
     </>
