@@ -176,15 +176,48 @@ export default async function handler(req, res) {
 
         // Send confirmation emails
         try {
+          console.log(
+            '📧 Starting email sending process for booking:',
+            booking.id
+          )
+
           // Send confirmation email to customer
-          await sendBookingConfirmationEmail(booking)
+          console.log('📧 Sending customer confirmation email...')
+          const customerEmailResult = await sendBookingConfirmationEmail(
+            booking
+          )
+
+          if (customerEmailResult.success) {
+            console.log('✅ Customer confirmation email sent successfully')
+            console.log('📧 Message ID:', customerEmailResult.messageId)
+          } else {
+            console.error(
+              '❌ Customer confirmation email failed:',
+              customerEmailResult.error
+            )
+          }
 
           // Send notification email to admin
-          await sendAdminNotificationEmail(booking)
+          console.log('📧 Sending admin notification email...')
+          const adminEmailResult = await sendAdminNotificationEmail(booking)
 
-          console.log('✅ Emails sent successfully for booking:', booking.id)
+          if (adminEmailResult.success) {
+            console.log('✅ Admin notification email sent successfully')
+            console.log('📧 Message ID:', adminEmailResult.messageId)
+          } else {
+            console.error(
+              '❌ Admin notification email failed:',
+              adminEmailResult.error
+            )
+          }
+
+          console.log('✅ All emails processed for booking:', booking.id)
         } catch (emailError) {
           console.error('❌ Email sending failed:', emailError)
+          console.error('❌ Email error details:', {
+            message: emailError.message,
+            stack: emailError.stack,
+          })
           // Don't fail the booking if email fails
         }
 

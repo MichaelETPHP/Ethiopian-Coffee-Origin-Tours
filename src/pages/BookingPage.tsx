@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -16,6 +16,8 @@ import {
   Camera,
   Utensils,
   Plane,
+  Home,
+  ChevronRight,
 } from 'lucide-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
@@ -248,8 +250,6 @@ const packages = [
     duration: '11 Days',
     includes:
       'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
-    description:
-      'Experience the complete Ethiopian coffee journey. This comprehensive 11-day trip covers all major coffee regions, from the legendary Yirgacheffe to the wild forests of Kaffa.',
   },
   {
     id: 'southern-ethiopia',
@@ -260,8 +260,6 @@ const packages = [
     duration: '7 Days',
     includes:
       'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
-    description:
-      "Step into the birthplace of Arabica coffee. This 7-day immersive journey takes you deep into Ethiopia's iconic coffee-producing regions.",
   },
   {
     id: 'western-ethiopia',
@@ -272,8 +270,6 @@ const packages = [
     duration: '6 Days',
     includes:
       'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
-    description:
-      'Journey to the birthplace of coffee in Western Ethiopia. Explore wild coffee forests, visit historical sites, and experience the origins of coffee culture.',
   },
 ]
 
@@ -301,6 +297,10 @@ const BookingPage: React.FC = () => {
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
   const [selectedPackageDetails, setSelectedPackageDetails] =
     useState<any>(null)
+
+  // Refs for scrolling and focusing
+  const formRef = useRef<HTMLDivElement>(null)
+  const fullNameInputRef = useRef<HTMLInputElement>(null)
 
   // Update selected package details when package changes
   useEffect(() => {
@@ -343,6 +343,28 @@ const BookingPage: React.FC = () => {
   const handleCountrySelect = (country: string) => {
     setFormData((prev) => ({ ...prev, country }))
     setShowCountryDropdown(false)
+  }
+
+  const handlePackageSelect = (packageId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedPackage: packageId,
+    }))
+
+    // On mobile, scroll to form and focus first input
+    if (window.innerWidth < 1024) {
+      // lg breakpoint
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+        // Focus first input after scroll
+        setTimeout(() => {
+          fullNameInputRef.current?.focus()
+        }, 500)
+      }, 100)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -469,168 +491,125 @@ const BookingPage: React.FC = () => {
     <>
       <Header />
 
-      {/* Hero Section */}
-      <section className='relative py-20 sm:py-24 lg:py-32 bg-gradient-to-br from-coffee-800 via-coffee-700 to-earth-700 overflow-hidden'>
-        {/* Background Pattern */}
-        <div className='absolute inset-0 opacity-10'>
-          <div className='absolute top-20 left-20 w-32 h-32 border-2 border-white rounded-full'></div>
-          <div className='absolute bottom-20 right-20 w-24 h-24 border-2 border-white rounded-full'></div>
-          <div className='absolute top-1/2 left-1/4 w-16 h-16 border-2 border-white rounded-full'></div>
-        </div>
-
-        <div className='relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white'>
-          {/* Back Button */}
-          <div className='mb-8'>
+      {/* Breadcrumbs - Improved positioning and styling */}
+      <div className='bg-gradient-to-r from-coffee-50 to-cream-50 border-b border-coffee-200 shadow-sm'>
+        <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4'>
+          <nav className='flex items-center space-x-2 text-sm font-inter'>
             <button
               onClick={handleBackToHome}
-              className='group inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-all duration-200 font-inter font-medium px-6 py-3 rounded-full border border-white/20'
+              className='flex items-center space-x-2 text-coffee-600 hover:text-coffee-800 transition-all duration-200 hover:bg-white/50 px-3 py-1 rounded-lg font-medium'
             >
-              <ArrowLeft className='h-5 w-5 group-hover:-translate-x-1 transition-transform duration-200' />
-              <span>Back to Homepage</span>
+              <Home className='h-4 w-4' />
+              <span className='hidden sm:inline'>Home</span>
             </button>
-          </div>
-
-          <div className='inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md text-cream-200 px-4 py-2 rounded-full mb-6'>
-            <Coffee className='h-5 w-5' />
-            <span className='font-inter font-medium'>
-              Ethiopian Coffee Origin Trip
+            <ChevronRight className='h-4 w-4 text-coffee-400' />
+            <span className='text-coffee-800 font-semibold bg-white/70 px-3 py-1 rounded-lg shadow-sm'>
+              Book Your Trip
             </span>
-          </div>
-
-          <h1 className='text-4xl sm:text-5xl lg:text-6xl font-playfair font-bold mb-6 leading-tight'>
-            Book Your
-            <span className='block text-cream-200'>Coffee Adventure</span>
-          </h1>
-
-          <p className='text-xl font-inter font-light mb-8 max-w-2xl mx-auto text-cream-100 leading-relaxed'>
-            Join us for an unforgettable journey to the birthplace of coffee.
-            Experience authentic culture, breathtaking landscapes, and
-            exceptional coffees.
-          </p>
+          </nav>
         </div>
-      </section>
+      </div>
 
-      {/* Main Booking Section */}
-      <section className='py-16 sm:py-20 lg:py-24 bg-cream-25'>
+      {/* Page Title */}
+      <div className='bg-white border-b border-cream-200 shadow-sm'>
+        <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6'>
+          <div className='text-center'>
+            <h1 className='text-2xl sm:text-3xl font-playfair font-bold text-coffee-800 mb-2'>
+              Book Your Coffee Adventure
+            </h1>
+            <p className='text-base text-coffee-600 font-inter max-w-2xl mx-auto'>
+              Join us for an unforgettable journey to the birthplace of coffee.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Booking Section - Compact Layout */}
+      <div className='bg-cream-25 py-8'>
         <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8'>
-          <div className='grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16'>
-            {/* Package Selection & Info */}
-            <div className='space-y-8'>
-              <div>
-                <h2 className='text-2xl sm:text-3xl font-playfair font-bold text-coffee-800 mb-6'>
-                  Choose Your Package
-                </h2>
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+            {/* Package Selection - Compact */}
+            <div className='space-y-4'>
+              <h2 className='text-xl font-playfair font-bold text-coffee-800 mb-4'>
+                Choose Your Package
+              </h2>
 
-                <div className='space-y-6'>
-                  {packages.map((pkg) => (
-                    <div
-                      key={pkg.id}
-                      className={`relative bg-white rounded-2xl shadow-lg border-2 transition-all duration-300 cursor-pointer hover:shadow-xl ${
-                        formData.selectedPackage === pkg.id
-                          ? 'border-coffee-600 ring-4 ring-coffee-100'
-                          : 'border-cream-200 hover:border-coffee-300'
-                      }`}
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          selectedPackage: pkg.id,
-                        }))
-                      }
-                    >
-                      {/* Selected Indicator */}
-                      {formData.selectedPackage === pkg.id && (
-                        <div className='absolute -top-3 -right-3 bg-coffee-600 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg'>
-                          <Check className='h-5 w-5' />
-                        </div>
-                      )}
+              <div className='space-y-3'>
+                {packages.map((pkg) => (
+                  <div
+                    key={pkg.id}
+                    className={`relative bg-white rounded-xl shadow-md border-2 transition-all duration-300 cursor-pointer hover:shadow-lg transform hover:scale-[1.02] ${
+                      formData.selectedPackage === pkg.id
+                        ? 'border-coffee-600 ring-2 ring-coffee-100 shadow-lg'
+                        : 'border-cream-200 hover:border-coffee-300'
+                    }`}
+                    onClick={() => handlePackageSelect(pkg.id)}
+                  >
+                    {/* Selected Indicator */}
+                    {formData.selectedPackage === pkg.id && (
+                      <div className='absolute -top-2 -right-2 bg-coffee-600 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-lg animate-pulse'>
+                        <Check className='h-4 w-4' />
+                      </div>
+                    )}
 
-                      <div className='flex flex-col sm:flex-row'>
-                        {/* Image */}
-                        {/* <div className='relative w-full sm:w-48 h-48 sm:h-auto'>
-                          <img
-                            src={`https://via.placeholder.com/200x150`} // Placeholder image
-                            alt={pkg.name}
-                            className='w-full h-full object-cover rounded-t-2xl sm:rounded-l-2xl sm:rounded-tr-none'
-                          />
-                          <div className='absolute top-4 left-4 bg-coffee-600 text-white px-3 py-1 rounded-full text-sm font-inter font-medium'>
-                            {pkg.duration}
-                          </div>
-                        </div> */}
+                    <div className='p-4'>
+                      <h3 className='text-base font-playfair font-bold text-coffee-800 mb-2'>
+                        {pkg.name}
+                      </h3>
 
-                        {/* Content */}
-                        <div className='p-4 sm:p-6 flex-grow'>
-                          <h3 className='text-lg sm:text-xl font-playfair font-bold text-coffee-800 mb-3'>
-                            {pkg.name} <br></br> ( {pkg.duration} )
-                          </h3>
+                      <div className='flex items-center space-x-2 mb-2'>
+                        <Calendar className='h-3 w-3 text-coffee-500' />
+                        <span className='text-coffee-600 font-inter text-xs'>
+                          {pkg.dates} • {pkg.duration}
+                        </span>
+                      </div>
 
-                          <div className='flex items-center space-x-2 mb-4'>
-                            <Calendar className='h-4 w-4 text-coffee-500' />
-                            <span className='text-coffee-600 font-inter text-sm'>
-                              {pkg.dates}
-                            </span>
-                          </div>
-
-                          <div className='flex flex-wrap gap-2 mb-4'>
-                            {pkg.regions.map((region, index) => (
-                              <span
-                                key={index}
-                                className='bg-cream-100 text-coffee-700 px-2 py-1 rounded-full text-xs font-inter'
-                              >
-                                {region}
-                              </span>
-                            ))}
-                          </div>
-
-                          <p className='text-coffee-600 font-inter text-sm leading-relaxed'>
-                            {pkg.description}
-                          </p>
-                        </div>
+                      <div className='flex flex-wrap gap-1'>
+                        {pkg.regions.map((region, index) => (
+                          <span
+                            key={index}
+                            className='bg-cream-100 text-coffee-700 px-2 py-1 rounded-full text-xs font-inter'
+                          >
+                            {region}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
 
-              {/* What's Included */}
+              {/* What's Included - Compact */}
               {selectedPackageDetails && (
-                <div className='bg-white rounded-2xl p-6 sm:p-8 shadow-lg border border-cream-200'>
-                  <h3 className='text-xl font-playfair font-bold text-coffee-800 mb-6'>
+                <div className='bg-white rounded-xl p-4 shadow-md border border-cream-200'>
+                  <h3 className='text-lg font-playfair font-bold text-coffee-800 mb-3'>
                     What's Included
                   </h3>
-                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <div className='grid grid-cols-2 gap-3'>
                     {[
                       {
-                        icon: <Plane className='h-5 w-5' />,
+                        icon: <Plane className='h-4 w-4' />,
                         title: 'All Local Travel',
-                        desc: 'Including flights within Ethiopia',
                       },
                       {
-                        icon: <Utensils className='h-5 w-5' />,
+                        icon: <Utensils className='h-4 w-4' />,
                         title: 'Meals & Drinks',
-                        desc: 'Traditional Ethiopian cuisine',
                       },
                       {
-                        icon: <MapPin className='h-5 w-5' />,
+                        icon: <MapPin className='h-4 w-4' />,
                         title: 'Accommodation',
-                        desc: 'Eco-lodges and guesthouses',
                       },
                       {
-                        icon: <Camera className='h-5 w-5' />,
+                        icon: <Camera className='h-4 w-4' />,
                         title: 'Marketing Support',
-                        desc: 'Professional content creation',
                       },
                     ].map((item, index) => (
-                      <div key={index} className='flex items-start space-x-3'>
-                        <div className='text-coffee-600 flex-shrink-0 mt-1'>
+                      <div key={index} className='flex items-center space-x-2'>
+                        <div className='text-coffee-600 flex-shrink-0'>
                           {item.icon}
                         </div>
-                        <div>
-                          <div className='font-inter font-semibold text-coffee-800 text-sm'>
-                            {item.title}
-                          </div>
-                          <div className='text-xs text-coffee-600'>
-                            {item.desc}
-                          </div>
+                        <div className='font-inter font-medium text-coffee-800 text-sm'>
+                          {item.title}
                         </div>
                       </div>
                     ))}
@@ -639,55 +618,59 @@ const BookingPage: React.FC = () => {
               )}
             </div>
 
-            {/* Booking Form */}
-            <div className='bg-white rounded-2xl shadow-2xl border border-cream-200 overflow-hidden'>
-              <div className='bg-gradient-to-r from-coffee-600 to-earth-600 p-6 sm:p-8 text-white'>
-                <div className='flex items-center space-x-3 mb-4'>
+            {/* Booking Form - Compact */}
+            <div
+              ref={formRef}
+              className='bg-white rounded-xl shadow-lg border border-cream-200 overflow-hidden'
+            >
+              <div className='bg-gradient-to-r from-coffee-600 to-earth-600 p-4 text-white'>
+                <div className='flex items-center space-x-3'>
                   <div className='bg-white/20 p-2 rounded-full'>
-                    <Coffee className='h-6 w-6' />
+                    <Coffee className='h-5 w-5' />
                   </div>
                   <div>
-                    <h2 className='text-2xl font-playfair font-bold'>
+                    <h2 className='text-xl font-playfair font-bold'>
                       Booking Form
                     </h2>
-                    <p className='text-coffee-100 font-inter'>
+                    <p className='text-coffee-100 font-inter text-sm'>
                       Complete your reservation
                     </p>
                   </div>
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className='p-6 sm:p-8 space-y-6'>
+              <form onSubmit={handleSubmit} className='p-4 space-y-4'>
                 {/* Error Message */}
                 {error && (
-                  <div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl'>
+                  <div className='bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg'>
                     <p className='text-sm font-inter'>{error}</p>
                   </div>
                 )}
 
                 {/* Personal Information */}
-                <div className='space-y-4'>
-                  <h3 className='text-lg font-playfair font-semibold text-coffee-800 flex items-center'>
-                    <User className='h-5 w-5 mr-2' />
+                <div className='space-y-3'>
+                  <h3 className='text-base font-playfair font-semibold text-coffee-800 flex items-center'>
+                    <User className='h-4 w-4 mr-2' />
                     Personal Information
                   </h3>
 
-                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                     <div>
                       <label
                         htmlFor='fullName'
-                        className='block text-sm font-inter font-medium text-coffee-700 mb-2'
+                        className='block text-xs font-inter font-medium text-coffee-700 mb-1'
                       >
                         Full Name *
                       </label>
                       <input
+                        ref={fullNameInputRef}
                         type='text'
                         id='fullName'
                         name='fullName'
                         value={formData.fullName}
                         onChange={handleInputChange}
                         required
-                        className='w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter'
+                        className='w-full px-3 py-2 border border-cream-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm'
                         placeholder='Enter your full name'
                       />
                     </div>
@@ -695,7 +678,7 @@ const BookingPage: React.FC = () => {
                     <div>
                       <label
                         htmlFor='age'
-                        className='block text-sm font-inter font-medium text-coffee-700 mb-2'
+                        className='block text-xs font-inter font-medium text-coffee-700 mb-1'
                       >
                         Age *
                       </label>
@@ -708,19 +691,19 @@ const BookingPage: React.FC = () => {
                         required
                         min='18'
                         max='100'
-                        className='w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter'
+                        className='w-full px-3 py-2 border border-cream-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm'
                         placeholder='Your age'
                       />
                     </div>
                   </div>
 
-                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                     <div>
                       <label
                         htmlFor='email'
-                        className='block text-sm font-inter font-medium text-coffee-700 mb-2'
+                        className='block text-xs font-inter font-medium text-coffee-700 mb-1'
                       >
-                        <Mail className='h-4 w-4 inline mr-1' />
+                        <Mail className='h-3 w-3 inline mr-1' />
                         Email Address *
                       </label>
                       <input
@@ -730,7 +713,7 @@ const BookingPage: React.FC = () => {
                         value={formData.email}
                         onChange={handleInputChange}
                         required
-                        className='w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter'
+                        className='w-full px-3 py-2 border border-cream-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm'
                         placeholder='your.email@example.com'
                       />
                     </div>
@@ -738,9 +721,9 @@ const BookingPage: React.FC = () => {
                     <div>
                       <label
                         htmlFor='phone'
-                        className='block text-sm font-inter font-medium text-coffee-700 mb-2'
+                        className='block text-xs font-inter font-medium text-coffee-700 mb-1'
                       >
-                        <Phone className='h-4 w-4 inline mr-1' />
+                        <Phone className='h-3 w-3 inline mr-1' />
                         Phone Number *
                       </label>
                       <input
@@ -750,7 +733,7 @@ const BookingPage: React.FC = () => {
                         value={formData.phone}
                         onChange={handleInputChange}
                         required
-                        className='w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter'
+                        className='w-full px-3 py-2 border border-cream-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm'
                         placeholder='+1 (555) 123-4567'
                       />
                     </div>
@@ -760,9 +743,9 @@ const BookingPage: React.FC = () => {
                   <div className='relative'>
                     <label
                       htmlFor='country'
-                      className='block text-sm font-inter font-medium text-coffee-700 mb-2'
+                      className='block text-xs font-inter font-medium text-coffee-700 mb-1'
                     >
-                      <Globe className='h-4 w-4 inline mr-1' />
+                      <Globe className='h-3 w-3 inline mr-1' />
                       Country *
                     </label>
                     <input
@@ -776,20 +759,20 @@ const BookingPage: React.FC = () => {
                         setTimeout(() => setShowCountryDropdown(false), 200)
                       }
                       required
-                      className='w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter'
+                      className='w-full px-3 py-2 border border-cream-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm'
                       placeholder='Start typing your country...'
                       autoComplete='country'
                     />
 
                     {/* Country Dropdown */}
                     {showCountryDropdown && filteredCountries.length > 0 && (
-                      <div className='absolute z-50 w-full mt-1 bg-white border border-cream-300 rounded-xl shadow-lg max-h-48 overflow-y-auto'>
+                      <div className='absolute z-50 w-full mt-1 bg-white border border-cream-300 rounded-lg shadow-lg max-h-32 overflow-y-auto'>
                         {filteredCountries.map((country, index) => (
                           <button
                             key={index}
                             type='button'
                             onClick={() => handleCountrySelect(country)}
-                            className='w-full text-left px-4 py-2 hover:bg-coffee-50 transition-colors duration-200 font-inter text-sm border-b border-cream-100 last:border-b-0'
+                            className='w-full text-left px-3 py-2 hover:bg-coffee-50 transition-colors duration-200 font-inter text-sm border-b border-cream-100 last:border-b-0'
                           >
                             {country}
                           </button>
@@ -800,17 +783,17 @@ const BookingPage: React.FC = () => {
                 </div>
 
                 {/* Booking Details */}
-                <div className='space-y-4'>
-                  <h3 className='text-lg font-playfair font-semibold text-coffee-800 flex items-center'>
-                    <Calendar className='h-5 w-5 mr-2' />
+                <div className='space-y-3'>
+                  <h3 className='text-base font-playfair font-semibold text-coffee-800 flex items-center'>
+                    <Calendar className='h-4 w-4 mr-2' />
                     Booking Details
                   </h3>
 
-                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                     <div>
                       <label
                         htmlFor='bookingType'
-                        className='block text-sm font-inter font-medium text-coffee-700 mb-2'
+                        className='block text-xs font-inter font-medium text-coffee-700 mb-1'
                       >
                         Booking Type *
                       </label>
@@ -820,7 +803,7 @@ const BookingPage: React.FC = () => {
                         value={formData.bookingType}
                         onChange={handleInputChange}
                         required
-                        className='w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter'
+                        className='w-full px-3 py-2 border border-cream-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm'
                       >
                         <option value='individual'>Individual</option>
                         <option value='group'>Group</option>
@@ -831,9 +814,9 @@ const BookingPage: React.FC = () => {
                       <div>
                         <label
                           htmlFor='numberOfPeople'
-                          className='block text-sm font-inter font-medium text-coffee-700 mb-2'
+                          className='block text-xs font-inter font-medium text-coffee-700 mb-1'
                         >
-                          <Users className='h-4 w-4 inline mr-1' />
+                          <Users className='h-3 w-3 inline mr-1' />
                           Number of People *
                         </label>
                         <input
@@ -845,7 +828,7 @@ const BookingPage: React.FC = () => {
                           required
                           min='2'
                           max='18'
-                          className='w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter'
+                          className='w-full px-3 py-2 border border-cream-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm'
                           placeholder='Number of travelers'
                         />
                       </div>
@@ -855,7 +838,7 @@ const BookingPage: React.FC = () => {
                   <div>
                     <label
                       htmlFor='selectedPackage'
-                      className='block text-sm font-inter font-medium text-coffee-700 mb-2'
+                      className='block text-xs font-inter font-medium text-coffee-700 mb-1'
                     >
                       Selected Package *
                     </label>
@@ -865,7 +848,7 @@ const BookingPage: React.FC = () => {
                       value={formData.selectedPackage}
                       onChange={handleInputChange}
                       required
-                      className='w-full px-4 py-3 border border-cream-300 rounded-xl focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter'
+                      className='w-full px-3 py-2 border border-cream-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:border-coffee-500 transition-colors duration-200 font-inter text-sm'
                     >
                       <option value=''>Choose a package...</option>
                       {packages.map((pkg) => (
@@ -878,44 +861,41 @@ const BookingPage: React.FC = () => {
                 </div>
 
                 {/* Submit Button with Success Animation */}
-                <div className='pt-4'>
+                <div className='pt-3'>
                   {showSuccessAnimation ? (
                     // Professional Success Animation
-                    <div className='w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 px-6 rounded-xl font-inter font-medium shadow-lg flex items-center justify-center space-x-3 animate-success-pulse'>
+                    <div className='w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-4 rounded-lg font-inter font-medium shadow-lg flex items-center justify-center space-x-2 animate-success-pulse'>
                       <div className='relative'>
-                        <div className='w-6 h-6 bg-white rounded-full flex items-center justify-center'>
-                          <Check className='h-4 w-4 text-green-600 animate-bounce' />
+                        <div className='w-5 h-5 bg-white rounded-full flex items-center justify-center'>
+                          <Check className='h-3 w-3 text-green-600 animate-bounce' />
                         </div>
-                        <div className='absolute inset-0 w-6 h-6 bg-white rounded-full animate-ping opacity-75'></div>
-                        <div className='absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping'></div>
+                        <div className='absolute inset-0 w-5 h-5 bg-white rounded-full animate-ping opacity-75'></div>
                       </div>
-                      <span className='font-semibold text-lg'>
+                      <span className='font-semibold text-sm'>
                         ✓ Booking Submitted Successfully!
                       </span>
-                      <div className='text-sm opacity-90 mt-1'>
-                        Check your email for confirmation details
-                      </div>
                     </div>
                   ) : (
                     <button
                       type='submit'
                       disabled={isSubmitting}
-                      className='w-full bg-gradient-to-r from-coffee-600 to-earth-600 text-white py-4 px-6 rounded-xl font-inter font-medium hover:from-coffee-700 hover:to-earth-700 transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-75 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center space-x-2'
+                      className='w-full bg-gradient-to-r from-coffee-600 to-earth-600 text-white py-3 px-4 rounded-lg font-inter font-medium hover:from-coffee-700 hover:to-earth-700 transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-75 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center space-x-2'
                     >
                       {isSubmitting ? (
                         <>
                           <div className='relative'>
-                            <div className='animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent'></div>
-                            <div className='absolute inset-0 rounded-full h-5 w-5 border-2 border-white border-t-transparent animate-ping opacity-30'></div>
+                            <div className='animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent'></div>
                           </div>
-                          <span className='font-medium'>
+                          <span className='font-medium text-sm'>
                             Processing Your Booking...
                           </span>
                         </>
                       ) : (
                         <>
-                          <Coffee className='h-5 w-5' />
-                          <span>Submit Booking Request</span>
+                          <Coffee className='h-4 w-4' />
+                          <span className='text-sm'>
+                            Submit Booking Request
+                          </span>
                         </>
                       )}
                     </button>
@@ -923,7 +903,7 @@ const BookingPage: React.FC = () => {
                 </div>
 
                 {/* Disclaimer */}
-                <div className='text-xs text-coffee-500 font-inter text-center bg-cream-50 p-4 rounded-xl'>
+                <div className='text-xs text-coffee-500 font-inter text-center bg-cream-50 p-3 rounded-lg'>
                   <p>
                     * Booking request received. You'll receive a confirmation
                     email shortly. We'll contact you within 8 hours to finalize
@@ -934,7 +914,7 @@ const BookingPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
       <Footer />
     </>

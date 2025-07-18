@@ -118,10 +118,27 @@ const TourPackages: React.FC = () => {
           {tourPackages.map((tour, index) => (
             <div
               key={tour.id}
-              className='group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden border border-cream-200 hover:border-coffee-300 hover:-translate-y-2 flex flex-col h-full'
+              className='group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden border border-cream-200 hover:border-coffee-300 hover:-translate-y-2 flex flex-col h-full relative'
               style={{ animationDelay: `${index * 150}ms` }}
             >
-              {/* Featured Image */}
+              {/* Ethiopian Flag Border at Bottom */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: '8px',
+                  background:
+                    'linear-gradient(to right, #078930 0%, #078930 33.33%, #FCDD09 33.33%, #FCDD09 66.66%, #DA121A 66.66%, #DA121A 100%)',
+                  backdropFilter: 'blur(4px)',
+                  boxShadow:
+                    '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+                  zIndex: 30,
+                }}
+              ></div>
+
+              {/* Featured Image with Hover Overlay */}
               <div className='relative overflow-hidden h-64 sm:h-72 md:h-80'>
                 <img
                   src={tour.image}
@@ -134,32 +151,22 @@ const TourPackages: React.FC = () => {
                 <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent'></div>
 
                 {/* Duration Badge - Top Left */}
-                <div className='absolute top-4 left-4 bg-coffee-600 text-white px-3 py-1.5 rounded-full text-xs sm:text-sm font-inter font-medium shadow-lg'>
+                <div className='absolute top-4 left-4 bg-coffee-600 text-white px-3 py-1.5 rounded-full text-xs sm:text-sm font-inter font-medium shadow-lg z-10'>
                   {tour.duration}
                 </div>
 
                 {/* Difficulty Badge - Bottom Left */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 16,
-                    left: 16,
-                    background:
-                      'linear-gradient(to right, #078930 0%, #078930 33.33%, #FCDD09 33.33%, #FCDD09 66.66%, #DA121A 66.66%, #DA121A 100%)',
-                    backdropFilter: 'blur(4px)',
-                    color: 'white',
-                    padding: '6px 12px',
-                    borderRadius: '9999px',
-                    fontSize: '0.75rem',
-                    fontFamily: "'Inter', sans-serif",
-                    fontWeight: 500,
-                    boxShadow:
-                      '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
-                    textShadow:
-                      '0 0 3px rgba(0,0,0,0.8), 1px 1px 2px rgba(0,0,0,0.6)',
-                  }}
-                >
-                  ETHIOPIA
+
+                {/* Hover Overlay with Book Now Button */}
+                <div className='absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center z-20'>
+                  <button
+                    onClick={() => handleBookTour(tour.id)}
+                    className='bg-gradient-to-r from-coffee-600 to-earth-600 text-white px-6 py-3 rounded-full font-inter font-semibold hover:from-coffee-700 hover:to-earth-700 transition-all duration-300 flex items-center space-x-2 hover:scale-110 shadow-lg transform'
+                  >
+                    <Coffee className='h-5 w-5' />
+                    <span>Book Now</span>
+                    <ArrowRight className='h-4 w-4' />
+                  </button>
                 </div>
               </div>
 
@@ -234,7 +241,7 @@ const TourPackages: React.FC = () => {
                 <div className='mx-4 sm:mx-6 border-t border-cream-200'></div>
 
                 {/* Book a Tour Button - Fixed at bottom with consistent spacing */}
-                <div className='p-4 sm:p-6'>
+                <div className='p-4 sm:p-6 pb-6'>
                   <button
                     onClick={() => handleBookTour(tour.id)}
                     className='group/btn w-full bg-gradient-to-r from-earth-600 to-earth-700 text-white py-4 px-6 rounded-xl font-inter font-semibold hover:from-earth-700 hover:to-earth-800 transition-all duration-300 flex items-center justify-center space-x-3 hover:scale-105 shadow-lg hover:shadow-xl transform min-h-[48px] touch-manipulation'
