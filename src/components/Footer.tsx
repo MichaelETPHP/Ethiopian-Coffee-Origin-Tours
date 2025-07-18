@@ -96,15 +96,13 @@ const Footer: React.FC = () => {
                 <div className='flex items-start space-x-3'>
                   <Phone className='h-4 w-4 text-coffee-400 flex-shrink-0 mt-0.5' />
                   <span className='text-coffee-300 font-inter text-sm sm:text-base'>
-                    +251 (911) 123-456
+                    +251 (976) 260-436
                   </span>
                 </div>
                 <div className='flex items-start space-x-3'>
                   <MapPin className='h-4 w-4 text-coffee-400 flex-shrink-0 mt-0.5' />
                   <span className='text-coffee-300 font-inter text-sm sm:text-base'>
-                    Addis Ababa, Ethiopia
-                    <br />
-                    Coffee Capital of the World
+                    Ethio China St
                   </span>
                 </div>
               </div>
@@ -133,7 +131,12 @@ const Footer: React.FC = () => {
                       svg
                       style={{ width: '20px', height: '15px' }}
                     />
-                    <span>Great Britain</span>
+                    <ReactCountryFlag
+                      countryCode='CH'
+                      svg
+                      style={{ width: '20px', height: '15px' }}
+                    />
+                    <span>UK & Switzerland</span>
                   </h5>
                   <div className='space-y-2'>
                     <p className='text-coffee-300 font-inter text-sm'>
@@ -178,6 +181,35 @@ const Footer: React.FC = () => {
                       <Phone className='h-3 w-3 text-coffee-400 flex-shrink-0 mt-1' />
                       <span className='text-coffee-300 font-inter text-xs sm:text-sm'>
                         +31 6 30 32 25 91 (WhatsApp)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* China */}
+                <div className='bg-coffee-700/30 rounded-lg p-4'>
+                  <h5 className='text-sm sm:text-base font-playfair font-semibold text-cream-200 mb-3 flex items-center space-x-2'>
+                    <ReactCountryFlag
+                      countryCode='CN'
+                      svg
+                      style={{ width: '20px', height: '15px' }}
+                    />
+                    <span>China</span>
+                  </h5>
+                  <div className='space-y-2'>
+                    <p className='text-coffee-300 font-inter text-sm'>
+                      <strong>Mr. Henock (Leo)</strong>
+                    </p>
+                    <div className='flex items-start space-x-2'>
+                      <Mail className='h-3 w-3 text-coffee-400 flex-shrink-0 mt-1' />
+                      <span className='text-coffee-300 font-inter text-xs sm:text-sm'>
+                        LIUQI_LEOO@ICLOUD.COM
+                      </span>
+                    </div>
+                    <div className='flex items-start space-x-2'>
+                      <Phone className='h-3 w-3 text-coffee-400 flex-shrink-0 mt-1' />
+                      <span className='text-coffee-300 font-inter text-xs sm:text-sm'>
+                        +86 175 7500 1415
                       </span>
                     </div>
                   </div>
