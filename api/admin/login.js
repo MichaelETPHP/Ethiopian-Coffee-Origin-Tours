@@ -1,19 +1,9 @@
 // api/admin/login.js - Simple working version
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import pg from 'pg'
 
-const { Pool } = pg
-
-// Create database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.DB_URL,
-  ssl:
-    process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: false }
-      : false,
-  max: 10,
-})
+// Import database from server
+import { db } from '../../server/index.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -48,27 +38,22 @@ export default async function handler(req, res) {
         .json({ error: 'Username and password are required' })
     }
 
-    // Connect to database
-    const client = await pool.connect()
-
     try {
       // Find user by username
-      const userResult = await client.query(
-        'SELECT id, username, email, password_hash, role FROM admin_users WHERE username = $1',
+      const user = await db.get(
+        'SELECT id, username, email, password_hash, role FROM admin_users WHERE username = ?',
         [username]
       )
 
       console.log(
         'Database query result:',
-        userResult.rows.length,
-        'users found'
+        user ? 'user found' : 'no user found'
       )
 
-      if (userResult.rows.length === 0) {
+      if (!user) {
         return res.status(401).json({ error: 'Invalid credentials' })
       }
 
-      const user = userResult.rows[0]
       console.log('Found user:', user.username, 'role:', user.role)
 
       // Check password
@@ -80,8 +65,8 @@ export default async function handler(req, res) {
       }
 
       // Update last login
-      await client.query(
-        'UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      await db.run(
+        'UPDATE admin_users SET last_login = datetime("now") WHERE id = ?',
         [user.id]
       )
 
@@ -109,8 +94,9 @@ export default async function handler(req, res) {
           role: user.role,
         },
       })
-    } finally {
-      client.release()
+    } catch (dbError) {
+      console.error('Database error:', dbError)
+      throw dbError
     }
   } catch (error) {
     console.error('Login error:', error)
@@ -121,7 +107,6 @@ export default async function handler(req, res) {
       details:
         process.env.NODE_ENV === 'development' ? error.message : 'Login failed',
       debug: {
-        hasDatabaseUrl: !!process.env.DATABASE_URL,
         hasJwtSecret: !!process.env.JWT_SECRET,
         nodeEnv: process.env.NODE_ENV,
         errorType: error.constructor.name,

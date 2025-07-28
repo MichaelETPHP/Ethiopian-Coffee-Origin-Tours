@@ -5,7 +5,6 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import compression from 'compression'
 import { body, validationResult } from 'express-validator'
-import pg from 'pg'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import nodemailer from 'nodemailer'
@@ -13,8 +12,9 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
+import sqlite3 from 'sqlite3'
+import { open } from 'sqlite'
 
-const { Pool } = pg
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -51,101 +51,75 @@ app.use((req, res, next) => {
   next()
 })
 
-// PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.DB_URL,
-  ssl:
-    process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: false }
-      : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-})
+// SQLite database connection
+let db = null
 
-// Initialize database tables
 async function initializeDatabase() {
   try {
-    console.log('🔧 Initializing database tables...')
-    const client = await pool.connect()
+    console.log('🔧 Initializing SQLite database...')
+
+    // Create database file in the server directory
+    const dbPath = path.join(__dirname, 'database.sqlite')
+    db = await open({
+      filename: dbPath,
+      driver: sqlite3.Database,
+    })
 
     // Create bookings table
-    await client.query(`
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS bookings (
-        id SERIAL PRIMARY KEY,
-        full_name VARCHAR(255) NOT NULL,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT NOT NULL,
         age INTEGER NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        phone VARCHAR(50) NOT NULL,
-        country VARCHAR(100) NOT NULL,
-        booking_type VARCHAR(20) CHECK (booking_type IN ('individual', 'group')) NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        country TEXT NOT NULL,
+        booking_type TEXT CHECK (booking_type IN ('individual', 'group')) NOT NULL,
         number_of_people INTEGER DEFAULT 1,
-        selected_package VARCHAR(255) NOT NULL,
-        status VARCHAR(20) CHECK (status IN ('pending', 'confirmed', 'cancelled')) DEFAULT 'pending',
+        selected_package TEXT NOT NULL,
+        status TEXT CHECK (status IN ('pending', 'confirmed', 'cancelled')) DEFAULT 'pending',
         notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `)
 
     // Create admin_users table
-    await client.query(`
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS admin_users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(100) UNIQUE NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(20) CHECK (role IN ('admin', 'manager')) DEFAULT 'admin',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_login TIMESTAMP NULL
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT CHECK (role IN ('admin', 'manager')) DEFAULT 'admin',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_login DATETIME NULL
       )
     `)
 
     // Create indexes for better performance
-    await client.query(
+    await db.exec(
       'CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email)'
     )
-    await client.query(
+    await db.exec(
       'CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at)'
     )
-    await client.query(
+    await db.exec(
       'CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)'
     )
-    await client.query(
-      'CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username)'
-    )
-
-    // Create update trigger for bookings
-    await client.query(`
-      CREATE OR REPLACE FUNCTION update_updated_at_column()
-      RETURNS TRIGGER AS $$
-      BEGIN
-          NEW.updated_at = CURRENT_TIMESTAMP;
-          RETURN NEW;
-      END;
-      $$ language 'plpgsql'
-    `)
-
-    await client.query(`
-      DROP TRIGGER IF EXISTS update_bookings_updated_at ON bookings;
-      CREATE TRIGGER update_bookings_updated_at 
-        BEFORE UPDATE ON bookings 
-        FOR EACH ROW 
-        EXECUTE FUNCTION update_updated_at_column()
-    `)
 
     // Check if admin user exists, if not create it
-    const adminCheck = await client.query(
-      'SELECT COUNT(*) as count FROM admin_users WHERE username = $1',
+    const adminCheck = await db.get(
+      'SELECT COUNT(*) as count FROM admin_users WHERE username = ?',
       ['admin']
     )
 
-    if (parseInt(adminCheck.rows[0].count) === 0) {
+    if (!adminCheck || adminCheck.count === 0) {
       console.log('👤 Creating default admin user...')
       const passwordHash = await bcrypt.hash('admin123', 12)
 
-      await client.query(
-        'INSERT INTO admin_users (username, email, password_hash, role) VALUES ($1, $2, $3, $4)',
+      await db.run(
+        'INSERT INTO admin_users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
         ['admin', 'admin@ethiopiancoffee.com', passwordHash, 'admin']
       )
       console.log('✅ Default admin user created')
@@ -155,26 +129,10 @@ async function initializeDatabase() {
       console.log('✅ Admin user already exists')
     }
 
-    // Insert sample bookings if table is empty
-    const bookingCheck = await client.query(
-      'SELECT COUNT(*) as count FROM bookings'
-    )
-    if (parseInt(bookingCheck.rows[0].count) === 0) {
-      console.log('📊 Creating sample bookings...')
-      await client.query(`
-        INSERT INTO bookings (full_name, age, email, phone, country, booking_type, number_of_people, selected_package, status) VALUES
-        ('John Smith', 35, 'john@example.com', '+1234567890', 'USA', 'individual', 1, 'Yirgacheffe Coffee Tour', 'pending'),
-        ('Maria Garcia', 28, 'maria@example.com', '+1234567891', 'Spain', 'group', 4, 'Sidamo Coffee Experience', 'confirmed'),
-        ('Ahmed Hassan', 42, 'ahmed@example.com', '+1234567892', 'Egypt', 'individual', 1, 'Limu Coffee Journey', 'pending'),
-        ('Sarah Johnson', 31, 'sarah@example.com', '+1234567893', 'Canada', 'group', 2, 'Harar Coffee Adventure', 'confirmed')
-      `)
-      console.log('✅ Sample bookings created')
-    }
-
-    client.release()
-    console.log('✅ Database initialization completed successfully!')
+    console.log('✅ Database initialized successfully')
   } catch (error) {
     console.error('❌ Database initialization error:', error)
+    throw error
   }
 }
 
@@ -192,18 +150,17 @@ const authenticateAdmin = async (req, res, next) => {
       token,
       process.env.JWT_SECRET || 'your-secret-key'
     )
-    const client = await pool.connect()
-    const users = await client.query(
-      'SELECT id, username, email, role FROM admin_users WHERE id = $1',
+
+    const user = await db.get(
+      'SELECT id, username, email, role FROM admin_users WHERE id = ?',
       [decoded.userId]
     )
-    client.release()
 
-    if (users.rows.length === 0) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid token.' })
     }
 
-    req.user = users.rows[0]
+    req.user = user
     next()
   } catch (error) {
     res.status(401).json({ error: 'Invalid token.' })
@@ -259,56 +216,89 @@ app.patch('/api/admin/bookings', async (req, res) => {
   await executeAPIFile('admin/bookings.js', req, res)
 })
 
+app.delete('/api/admin/bookings', async (req, res) => {
+  await executeAPIFile('admin/bookings.js', req, res)
+})
+
 // Booking submission - Use existing api/bookings.js
 app.post('/api/bookings', async (req, res) => {
   await executeAPIFile('bookings.js', req, res)
 })
 
-app.delete('/api/bookings/:id', async (req, res) => {
-  await executeAPIFile('bookings.js', req, res)
+// Individual booking operations
+app.get('/api/bookings/:id', async (req, res) => {
+  await executeAPIFile(`bookings/${req.params.id}.js`, req, res)
 })
 
-// Serve static files for React app (for production)
-app.use(express.static(path.join(process.cwd(), 'dist')))
+app.patch('/api/bookings/:id', async (req, res) => {
+  await executeAPIFile(`bookings/${req.params.id}.js`, req, res)
+})
 
-// Handle React routing - serve index.html for all non-API routes
+// Send email for booking
+app.post('/api/bookings/:id/send-email', async (req, res) => {
+  await executeAPIFile(`bookings/${req.params.id}/send-email.js`, req, res)
+})
+
+// Admin individual booking operations
+app.get('/api/admin/bookings/:id', async (req, res) => {
+  await executeAPIFile(`admin/bookings/${req.params.id}.js`, req, res)
+})
+
+app.patch('/api/admin/bookings/:id', async (req, res) => {
+  await executeAPIFile(`admin/bookings/${req.params.id}.js`, req, res)
+})
+
+// Send email from admin
+app.post('/api/admin/bookings/:id/send-email', async (req, res) => {
+  await executeAPIFile(
+    `admin/bookings/${req.params.id}/send-email.js`,
+    req,
+    res
+  )
+})
+
+// Debug endpoint
+app.get('/api/debug', async (req, res) => {
+  await executeAPIFile('debug.js', req, res)
+})
+
+// Serve static files
+app.use(express.static(path.join(process.cwd(), 'public')))
+
+// Serve React app
 app.get('*', (req, res) => {
-  // Don't handle API routes
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API endpoint not found' })
-  }
+  res.sendFile(path.join(process.cwd(), 'public', 'index.html'))
+})
 
-  // Serve React app for all other routes
-  const indexPath = path.join(process.cwd(), 'dist', 'index.html')
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath)
-  } else {
-    res.status(404).send('React app not built. Run "npm run build" first.')
-  }
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Server error:', error)
+  res.status(500).json({ error: 'Internal server error' })
 })
 
 // Start server
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running on port ${PORT}`)
-  console.log(`📊 API endpoints available:`)
-  console.log(`   - POST /api/admin/login - Admin login`)
-  console.log(`   - GET /api/admin/bookings - Get bookings`)
-  console.log(`   - PATCH /api/admin/bookings - Update booking`)
-  console.log(`   - POST /api/bookings - Create booking`)
-  console.log(`   - DELETE /api/bookings/:id - Delete booking`)
-  console.log(`   - GET /api/health - Health check`)
-  console.log(``)
-  console.log(`🌐 React app should be served by Vite on port 5175`)
-  console.log(`🔗 Admin dashboard: http://localhost:5175/admin`)
-  console.log(``)
-  console.log(`🔧 Initializing database...`)
-
-  // Initialize database tables
-  await initializeDatabase()
-
-  console.log(``)
-  console.log(`🎉 Server ready! You can now:`)
-  console.log(`   1. Start your React app: npm run dev`)
-  console.log(`   2. Access admin at: http://localhost:5175/admin`)
-  console.log(`   3. Login with: admin / admin123`)
+const server = app.listen(PORT, async () => {
+  try {
+    await initializeDatabase()
+    console.log(`🚀 Server running on port ${PORT}`)
+    console.log(`📧 Email configured with: hello@ehiopiancoffeeorgintrip.com`)
+    console.log(`💾 Database: SQLite (server/database.sqlite)`)
+    console.log(`🌐 Frontend: http://localhost:5173`)
+    console.log(`🔧 Backend: http://localhost:${PORT}`)
+  } catch (error) {
+    console.error('❌ Failed to start server:', error)
+    process.exit(1)
+  }
 })
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully')
+  server.close(() => {
+    console.log('✅ Server closed')
+    process.exit(0)
+  })
+})
+
+// Export for testing
+export { app, db }

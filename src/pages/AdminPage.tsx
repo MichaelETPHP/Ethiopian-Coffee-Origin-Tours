@@ -250,7 +250,7 @@ const AdminPage: React.FC = () => {
     setDeletingBookings((prev) => new Set(prev).add(id))
 
     try {
-      const response = await fetch(`/api/bookings/${id}`, {
+      const response = await fetch(`/api/admin/bookings?id=${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

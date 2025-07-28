@@ -1,24 +1,12 @@
 // api/bookings.js
-import pg from 'pg'
 import jwt from 'jsonwebtoken'
 import {
   sendBookingConfirmationEmail,
   sendAdminNotificationEmail,
 } from '../lib/email.js'
 
-const { Pool } = pg
-
-// Create PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.DB_URL,
-  ssl:
-    process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: false }
-      : false,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-})
+// Import database from server
+import { db } from '../server/index.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -61,33 +49,25 @@ export default async function handler(req, res) {
           token,
           process.env.JWT_SECRET || 'your-secret-key'
         )
-        const client = await pool.connect()
 
         // Verify admin user exists
-        const adminUser = await client.query(
-          'SELECT id, username, role FROM admin_users WHERE id = $1',
+        const adminUser = await db.get(
+          'SELECT id, username, role FROM admin_users WHERE id = ?',
           [decoded.userId]
         )
 
-        if (adminUser.rows.length === 0) {
-          client.release()
+        if (!adminUser) {
           return res.status(401).json({ error: 'Invalid token.' })
         }
 
         // Delete the booking
-        const result = await client.query(
-          'DELETE FROM bookings WHERE id = $1',
-          [id]
-        )
-        client.release()
+        const result = await db.run('DELETE FROM bookings WHERE id = ?', [id])
 
-        if (result.rowCount === 0) {
+        if (result.changes === 0) {
           return res.status(404).json({ error: 'Booking not found' })
         }
 
-        console.log(
-          `✅ Booking ${id} deleted by admin ${adminUser.rows[0].username}`
-        )
+        console.log(`✅ Booking ${id} deleted by admin ${adminUser.username}`)
         res.status(200).json({
           success: true,
           message: 'Booking deleted successfully',
@@ -129,22 +109,16 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing required fields' })
       }
 
-      const client = await pool.connect()
-
       try {
-        await client.query('BEGIN')
-
         // Check for duplicate bookings
-        const existingBookings = await client.query(
+        const existingBooking = await db.get(
           `SELECT id FROM bookings 
-           WHERE email = $1 AND selected_package = $2 
-           AND (status IS NULL OR status != 'cancelled') 
-           LIMIT 1`,
+           WHERE email = ? AND selected_package = ? 
+           AND (status IS NULL OR status != 'cancelled')`,
           [email, selectedPackage]
         )
 
-        if (existingBookings.rows.length > 0) {
-          await client.query('ROLLBACK')
+        if (existingBooking) {
           return res.status(409).json({
             error:
               'A booking with this email already exists for the selected package.',
@@ -152,12 +126,11 @@ export default async function handler(req, res) {
         }
 
         // Insert booking
-        const result = await client.query(
+        const result = await db.run(
           `INSERT INTO bookings (
             full_name, age, email, phone, country, booking_type, 
             number_of_people, selected_package, status, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW()) 
-          RETURNING *`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`,
           [
             fullName,
             age,
@@ -170,9 +143,10 @@ export default async function handler(req, res) {
           ]
         )
 
-        const booking = result.rows[0]
-
-        await client.query('COMMIT')
+        // Get the created booking
+        const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [
+          result.lastID,
+        ])
 
         // Send confirmation emails
         try {
@@ -226,10 +200,7 @@ export default async function handler(req, res) {
           bookingId: booking.id,
         })
       } catch (error) {
-        await client.query('ROLLBACK')
         throw error
-      } finally {
-        client.release()
       }
     } catch (error) {
       console.error('Booking submission error:', error)

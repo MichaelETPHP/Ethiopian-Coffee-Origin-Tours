@@ -1,22 +1,14 @@
 // api/admin/bookings.js - Simple working version
 import jwt from 'jsonwebtoken'
-import pg from 'pg'
+
+// Import database from server
+import { db } from '../../server/index.js'
+
+// Import email functions
 import {
   sendPaymentConfirmationEmail,
   sendStatusUpdateEmail,
 } from '../../lib/email.js'
-
-const { Pool } = pg
-
-// Create database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.DB_URL,
-  ssl:
-    process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: false }
-      : false,
-  max: 10,
-})
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -58,6 +50,8 @@ export default async function handler(req, res) {
     return await getBookings(req, res)
   } else if (req.method === 'PATCH') {
     return await updateBooking(req, res)
+  } else if (req.method === 'DELETE') {
+    return await deleteBooking(req, res)
   } else {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -92,12 +86,8 @@ async function getBookings(req, res) {
 
     // Add search filter
     if (search) {
-      query += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
-        paramIndex + 1
-      } OR phone ILIKE $${paramIndex + 2})`
-      countQuery += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
-        paramIndex + 1
-      } OR phone ILIKE $${paramIndex + 2})`
+      query += ` AND (full_name LIKE ? OR email LIKE ? OR phone LIKE ?)`
+      countQuery += ` AND (full_name LIKE ? OR email LIKE ? OR phone LIKE ?)`
       const searchParam = `%${search}%`
       params.push(searchParam, searchParam, searchParam)
       countParams.push(searchParam, searchParam, searchParam)
@@ -106,8 +96,8 @@ async function getBookings(req, res) {
 
     // Add status filter
     if (status) {
-      query += ` AND status = $${paramIndex}`
-      countQuery += ` AND status = $${paramIndex}`
+      query += ` AND status = ?`
+      countQuery += ` AND status = ?`
       params.push(status)
       countParams.push(status)
       paramIndex += 1
@@ -115,113 +105,120 @@ async function getBookings(req, res) {
 
     // Add package filter
     if (packageFilter) {
-      query += ` AND selected_package ILIKE $${paramIndex}`
-      countQuery += ` AND selected_package ILIKE $${paramIndex}`
+      query += ` AND selected_package LIKE ?`
+      countQuery += ` AND selected_package LIKE ?`
       params.push(`%${packageFilter}%`)
       countParams.push(`%${packageFilter}%`)
       paramIndex += 1
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${
-      paramIndex + 1
-    }`
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
     params.push(parseInt(limit), parseInt(offset))
 
-    const client = await pool.connect()
+    // Execute queries
+    const [bookingsResult, countResult] = await Promise.all([
+      db.all(query, params),
+      db.get(countQuery, countParams),
+    ])
 
-    try {
-      console.log('Executing query:', query)
-      console.log('With params:', params)
+    const total = countResult.total || 0
 
-      const [bookingsResult, countResult] = await Promise.all([
-        client.query(query, params),
-        client.query(countQuery, countParams),
-      ])
+    console.log(`Found ${bookingsResult.length} bookings out of ${total} total`)
 
-      console.log('Found', bookingsResult.rows.length, 'bookings')
-
-      res.status(200).json({
-        success: true,
-        bookings: bookingsResult.rows,
-        total: parseInt(countResult.rows[0]?.total || 0),
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil((countResult.rows[0]?.total || 0) / limit),
-      })
-    } finally {
-      client.release()
-    }
-  } catch (error) {
-    console.error('Get bookings error:', error)
-    res.status(500).json({
-      error: 'Failed to fetch bookings',
-      details:
-        process.env.NODE_ENV === 'development' ? error.message : undefined,
+    res.status(200).json({
+      success: true,
+      bookings: bookingsResult,
+      total: total,
+      totalPages: Math.ceil(total / limit),
+      page: parseInt(page),
+      limit: parseInt(limit),
     })
+  } catch (error) {
+    console.error('Error getting bookings:', error)
+    res.status(500).json({ error: 'Internal server error' })
   }
 }
 
 // Update booking status
 async function updateBooking(req, res) {
   try {
-    const { id } = req.query
-    const { status, notes } = req.body
+    const { id, status, notes } = req.body
 
-    console.log('Updating booking', id, 'to status:', status)
+    if (!id || !status) {
+      return res
+        .status(400)
+        .json({ error: 'Booking ID and status are required' })
+    }
+
+    console.log(`Updating booking ${id} to status: ${status}`)
+
+    // Update booking
+    const result = await db.run(
+      'UPDATE bookings SET status = ?, notes = ?, updated_at = datetime("now") WHERE id = ?',
+      [status, notes || null, id]
+    )
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Booking not found' })
+    }
+
+    // Get updated booking
+    const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [id])
+
+    // Send emails based on status
+    try {
+      if (status === 'confirmed') {
+        console.log('📧 Sending payment confirmation email...')
+        await sendPaymentConfirmationEmail(booking)
+      } else if (status === 'cancelled') {
+        console.log('📧 Sending status update email...')
+        await sendStatusUpdateEmail(booking, status)
+      }
+    } catch (emailError) {
+      console.error('❌ Email sending failed:', emailError)
+      // Don't fail the update if email fails
+    }
+
+    console.log(`✅ Booking ${id} updated to ${status}`)
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking updated successfully',
+      booking,
+    })
+  } catch (error) {
+    console.error('Error updating booking:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+}
+
+// Delete booking
+async function deleteBooking(req, res) {
+  try {
+    const { id } = req.query
 
     if (!id) {
       return res.status(400).json({ error: 'Booking ID is required' })
     }
 
-    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' })
+    console.log(`🗑️ Deleting booking ${id}...`)
+
+    // Delete the booking
+    const result = await db.run('DELETE FROM bookings WHERE id = ?', [id])
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Booking not found' })
     }
 
-    const client = await pool.connect()
+    console.log(`✅ Booking ${id} deleted successfully`)
 
-    try {
-      const result = await client.query(
-        'UPDATE bookings SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
-        [status, notes || null, id]
-      )
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Booking not found' })
-      }
-
-      const booking = result.rows[0]
-      console.log('Booking updated successfully')
-
-      // Send email notifications
-      try {
-        if (status === 'confirmed') {
-          // Send payment confirmation email
-          await sendPaymentConfirmationEmail(booking)
-          console.log('✅ Payment confirmation email sent to:', booking.email)
-        } else {
-          // Send status update email for other status changes
-          await sendStatusUpdateEmail(booking, 'pending', status)
-          console.log('✅ Status update email sent to:', booking.email)
-        }
-      } catch (emailError) {
-        console.error('❌ Email sending failed:', emailError)
-        // Don't fail the update if email fails
-      }
-
-      res.status(200).json({
-        success: true,
-        message: 'Booking updated successfully',
-        booking: booking,
-      })
-    } finally {
-      client.release()
-    }
-  } catch (error) {
-    console.error('Update booking error:', error)
-    res.status(500).json({
-      error: 'Failed to update booking',
-      details:
-        process.env.NODE_ENV === 'development' ? error.message : undefined,
+    res.status(200).json({
+      success: true,
+      message: 'Booking deleted successfully',
+      deletedId: id,
     })
+  } catch (error) {
+    console.error('Error deleting booking:', error)
+    res.status(500).json({ error: 'Internal server error' })
   }
 }
