@@ -1,6 +1,5 @@
 // api/admin/bookings/[id]/send-email.js - Manual email sending
 import jwt from 'jsonwebtoken'
-import pg from 'pg'
 import {
   sendBookingConfirmationEmail,
   sendPaymentConfirmationEmail,
@@ -8,17 +7,8 @@ import {
   sendAdminNotificationEmail,
 } from '../../../../lib/email.js'
 
-const { Pool } = pg
-
-// Create database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.DB_URL,
-  ssl:
-    process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: false }
-      : false,
-  max: 10,
-})
+// Import database for Vercel deployment
+import { db } from '../../../../lib/db-vercel.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -38,34 +28,42 @@ export default async function handler(req, res) {
     return
   }
 
-  // Simple authentication check
-  const token = req.headers.authorization?.replace('Bearer ', '')
+  // Verify admin authentication
+  const token = req.header('Authorization')?.replace('Bearer ', '')
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' })
   }
 
   try {
-    // Verify token
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET || 'your-secret-key'
     )
-    console.log('Token verified for user:', decoded.username)
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' })
-  }
 
-  const { id } = req.query
+    // Verify admin user exists
+    const adminUser = await db.get(
+      'SELECT id, username, role FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    )
 
-  if (!id) {
-    return res.status(400).json({ error: 'Booking ID is required' })
-  }
+    if (!adminUser) {
+      return res.status(401).json({ error: 'Invalid token.' })
+    }
 
-  // Handle different methods
-  if (req.method === 'POST') {
-    return await sendEmail(req, res, id)
-  } else {
-    return res.status(405).json({ error: 'Method not allowed' })
+    const { id } = req.query
+
+    if (!id) {
+      return res.status(400).json({ error: 'Booking ID is required' })
+    }
+
+    // Handle different methods
+    if (req.method === 'POST') {
+      return await sendEmail(req, res, id)
+    } else {
+      return res.status(405).json({ error: 'Method not allowed' })
+    }
+  } catch (jwtError) {
+    return res.status(401).json({ error: 'Invalid token.' })
   }
 }
 
@@ -94,68 +92,47 @@ async function sendEmail(req, res, id) {
       })
     }
 
-    const client = await pool.connect()
+    // Get booking details
+    const booking = await db.get('SELECT * FROM bookings WHERE id = $1', [id])
 
-    try {
-      // Get booking details
-      const result = await client.query(
-        'SELECT * FROM bookings WHERE id = $1',
-        [id]
-      )
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' })
+    }
 
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Booking not found' })
-      }
+    let emailResult = null
 
-      const booking = result.rows[0]
-      let emailResult = null
+    // Send appropriate email based on type
+    switch (emailType) {
+      case 'booking-confirmation':
+        emailResult = await sendBookingConfirmationEmail(booking)
+        break
+      case 'payment-confirmation':
+        emailResult = await sendPaymentConfirmationEmail(booking)
+        break
+      case 'status-update':
+        emailResult = await sendStatusUpdateEmail(booking)
+        break
+      case 'admin-notification':
+        emailResult = await sendAdminNotificationEmail(booking)
+        break
+      default:
+        return res.status(400).json({ error: 'Invalid email type' })
+    }
 
-      // Send appropriate email based on type
-      switch (emailType) {
-        case 'booking-confirmation':
-          emailResult = await sendBookingConfirmationEmail(booking)
-          break
-        case 'payment-confirmation':
-          emailResult = await sendPaymentConfirmationEmail(booking)
-          break
-        case 'status-update':
-          // For status update, we need the old status
-          emailResult = await sendStatusUpdateEmail(
-            booking,
-            'pending',
-            booking.status
-          )
-          break
-        case 'admin-notification':
-          emailResult = await sendAdminNotificationEmail(booking)
-          break
-        default:
-          return res.status(400).json({ error: 'Invalid email type' })
-      }
-
-      if (emailResult.success) {
-        console.log(
-          `✅ ${emailType} email sent successfully to:`,
-          booking.email
-        )
-        res.status(200).json({
-          success: true,
-          message: `${emailType} email sent successfully`,
-          recipient: booking.email,
-          messageId: emailResult.messageId,
-        })
-      } else {
-        console.error(
-          `❌ Failed to send ${emailType} email:`,
-          emailResult.error
-        )
-        res.status(500).json({
-          error: `Failed to send ${emailType} email`,
-          details: emailResult.error,
-        })
-      }
-    } finally {
-      client.release()
+    if (emailResult.success) {
+      console.log(`✅ Email sent successfully for booking ${id}`)
+      res.status(200).json({
+        success: true,
+        message: 'Email sent successfully',
+        messageId: emailResult.messageId,
+      })
+    } else {
+      console.error(`❌ Email failed for booking ${id}:`, emailResult.error)
+      res.status(500).json({
+        success: false,
+        error: 'Failed to send email',
+        details: emailResult.error,
+      })
     }
   } catch (error) {
     console.error('Send email error:', error)

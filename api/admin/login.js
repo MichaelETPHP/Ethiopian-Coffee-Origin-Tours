@@ -1,9 +1,9 @@
-// api/admin/login.js - Simple working version
-import bcrypt from 'bcryptjs'
+// api/admin/login.js
 import jwt from 'jsonwebtoken'
+import bcrypt from 'bcrypt'
 
-// Import database from server
-import { db } from '../../server/index.js'
+// Import database for Vercel deployment
+import { db } from '../../lib/db-vercel.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -30,87 +30,65 @@ export default async function handler(req, res) {
   try {
     const { username, password } = req.body
 
-    console.log('Login attempt for username:', username)
-
     if (!username || !password) {
       return res
         .status(400)
         .json({ error: 'Username and password are required' })
     }
 
-    try {
-      // Find user by username
-      const user = await db.get(
-        'SELECT id, username, email, password_hash, role FROM admin_users WHERE username = ?',
-        [username]
-      )
+    console.log(`🔐 Login attempt for user: ${username}`)
 
-      console.log(
-        'Database query result:',
-        user ? 'user found' : 'no user found'
-      )
+    // Find user by username
+    const user = await db.get(
+      'SELECT id, username, email, password_hash, role FROM admin_users WHERE username = $1',
+      [username]
+    )
 
-      if (!user) {
-        return res.status(401).json({ error: 'Invalid credentials' })
-      }
-
-      console.log('Found user:', user.username, 'role:', user.role)
-
-      // Check password
-      const isValidPassword = await bcrypt.compare(password, user.password_hash)
-      console.log('Password valid:', isValidPassword)
-
-      if (!isValidPassword) {
-        return res.status(401).json({ error: 'Invalid credentials' })
-      }
-
-      // Update last login
-      await db.run(
-        'UPDATE admin_users SET last_login = datetime("now") WHERE id = ?',
-        [user.id]
-      )
-
-      // Generate JWT token
-      const token = jwt.sign(
-        {
-          userId: user.id,
-          username: user.username,
-          role: user.role,
-        },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '24h' }
-      )
-
-      console.log('Login successful for:', user.username)
-
-      // Return success response
-      res.status(200).json({
-        success: true,
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-        },
-      })
-    } catch (dbError) {
-      console.error('Database error:', dbError)
-      throw dbError
+    if (!user) {
+      console.log(`❌ Login failed: User ${username} not found`)
+      return res.status(401).json({ error: 'Invalid credentials' })
     }
-  } catch (error) {
-    console.error('Login error:', error)
 
-    // Return detailed error for debugging
-    res.status(500).json({
-      error: 'Internal server error',
-      details:
-        process.env.NODE_ENV === 'development' ? error.message : 'Login failed',
-      debug: {
-        hasJwtSecret: !!process.env.JWT_SECRET,
-        nodeEnv: process.env.NODE_ENV,
-        errorType: error.constructor.name,
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash)
+
+    if (!isValidPassword) {
+      console.log(`❌ Login failed: Invalid password for user ${username}`)
+      return res.status(401).json({ error: 'Invalid credentials' })
+    }
+
+    // Update last login
+    await db.run(
+      'UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    )
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        username: user.username,
+        role: user.role,
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    )
+
+    console.log(`✅ Login successful for user: ${username}`)
+
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
       },
     })
+  } catch (error) {
+    console.error('Login error:', error)
+    res.status(500).json({ error: 'Internal server error' })
   }
 }

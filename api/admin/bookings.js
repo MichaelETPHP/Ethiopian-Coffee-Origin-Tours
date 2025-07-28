@@ -1,14 +1,12 @@
-// api/admin/bookings.js - Simple working version
+// api/admin/bookings.js
 import jwt from 'jsonwebtoken'
-
-// Import database from server
-import { db } from '../../server/index.js'
-
-// Import email functions
 import {
   sendPaymentConfirmationEmail,
   sendStatusUpdateEmail,
 } from '../../lib/email.js'
+
+// Import database for Vercel deployment
+import { db } from '../../lib/db-vercel.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -28,36 +26,44 @@ export default async function handler(req, res) {
     return
   }
 
-  // Simple authentication check
-  const token = req.headers.authorization?.replace('Bearer ', '')
+  // Verify admin authentication
+  const token = req.header('Authorization')?.replace('Bearer ', '')
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' })
   }
 
   try {
-    // Verify token
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET || 'your-secret-key'
     )
-    console.log('Token verified for user:', decoded.username)
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' })
-  }
 
-  // Handle different methods
-  if (req.method === 'GET') {
-    return await getBookings(req, res)
-  } else if (req.method === 'PATCH') {
-    return await updateBooking(req, res)
-  } else if (req.method === 'DELETE') {
-    return await deleteBooking(req, res)
-  } else {
-    return res.status(405).json({ error: 'Method not allowed' })
+    // Verify admin user exists
+    const adminUser = await db.get(
+      'SELECT id, username, role FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    )
+
+    if (!adminUser) {
+      return res.status(401).json({ error: 'Invalid token.' })
+    }
+
+    // Handle different methods
+    if (req.method === 'GET') {
+      return await getBookings(req, res)
+    } else if (req.method === 'PATCH') {
+      return await updateBooking(req, res)
+    } else if (req.method === 'DELETE') {
+      return await deleteBooking(req, res)
+    } else {
+      return res.status(405).json({ error: 'Method not allowed' })
+    }
+  } catch (jwtError) {
+    return res.status(401).json({ error: 'Invalid token.' })
   }
 }
 
-// Get all bookings
+// Get all bookings with pagination and filtering
 async function getBookings(req, res) {
   try {
     const {
@@ -67,15 +73,6 @@ async function getBookings(req, res) {
       status = '',
       package: packageFilter = '',
     } = req.query
-
-    console.log('Getting bookings with filters:', {
-      page,
-      limit,
-      search,
-      status,
-      packageFilter,
-    })
-
     const offset = (page - 1) * limit
 
     let query = 'SELECT * FROM bookings WHERE 1=1'
@@ -84,57 +81,58 @@ async function getBookings(req, res) {
     const countParams = []
     let paramIndex = 1
 
-    // Add search filter
+    // Add filters
     if (search) {
-      query += ` AND (full_name LIKE ? OR email LIKE ? OR phone LIKE ?)`
-      countQuery += ` AND (full_name LIKE ? OR email LIKE ? OR phone LIKE ?)`
+      query += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
+        paramIndex + 1
+      } OR phone ILIKE $${paramIndex + 2})`
+      countQuery += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
+        paramIndex + 1
+      } OR phone ILIKE $${paramIndex + 2})`
       const searchParam = `%${search}%`
       params.push(searchParam, searchParam, searchParam)
       countParams.push(searchParam, searchParam, searchParam)
       paramIndex += 3
     }
 
-    // Add status filter
     if (status) {
-      query += ` AND status = ?`
-      countQuery += ` AND status = ?`
+      query += ` AND status = $${paramIndex}`
+      countQuery += ` AND status = $${paramIndex}`
       params.push(status)
       countParams.push(status)
       paramIndex += 1
     }
 
-    // Add package filter
     if (packageFilter) {
-      query += ` AND selected_package LIKE ?`
-      countQuery += ` AND selected_package LIKE ?`
+      query += ` AND selected_package ILIKE $${paramIndex}`
+      countQuery += ` AND selected_package ILIKE $${paramIndex}`
       params.push(`%${packageFilter}%`)
       countParams.push(`%${packageFilter}%`)
       paramIndex += 1
     }
 
-    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${
+      paramIndex + 1
+    }`
     params.push(parseInt(limit), parseInt(offset))
 
-    // Execute queries
     const [bookingsResult, countResult] = await Promise.all([
       db.all(query, params),
-      db.get(countQuery, countParams),
+      db.all(countQuery, countParams),
     ])
 
-    const total = countResult.total || 0
-
-    console.log(`Found ${bookingsResult.length} bookings out of ${total} total`)
+    const total = parseInt(countResult[0]?.total || 0)
 
     res.status(200).json({
       success: true,
       bookings: bookingsResult,
-      total: total,
-      totalPages: Math.ceil(total / limit),
+      total,
       page: parseInt(page),
       limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit),
     })
   } catch (error) {
-    console.error('Error getting bookings:', error)
+    console.error('Error fetching bookings:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 }
@@ -150,11 +148,10 @@ async function updateBooking(req, res) {
         .json({ error: 'Booking ID and status are required' })
     }
 
-    console.log(`Updating booking ${id} to status: ${status}`)
+    console.log(`🔄 Updating booking ${id} status to ${status}`)
 
-    // Update booking
     const result = await db.run(
-      'UPDATE bookings SET status = ?, notes = ?, updated_at = datetime("now") WHERE id = ?',
+      'UPDATE bookings SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
       [status, notes || null, id]
     )
 
@@ -163,23 +160,24 @@ async function updateBooking(req, res) {
     }
 
     // Get updated booking
-    const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [id])
+    const booking = await db.get('SELECT * FROM bookings WHERE id = $1', [id])
 
-    // Send emails based on status
+    // Send status update email
     try {
-      if (status === 'confirmed') {
-        console.log('📧 Sending payment confirmation email...')
-        await sendPaymentConfirmationEmail(booking)
-      } else if (status === 'cancelled') {
-        console.log('📧 Sending status update email...')
-        await sendStatusUpdateEmail(booking, status)
+      console.log(`📧 Sending status update email for booking ${id}`)
+      const emailResult = await sendStatusUpdateEmail(booking)
+
+      if (emailResult.success) {
+        console.log('✅ Status update email sent successfully')
+      } else {
+        console.error('❌ Status update email failed:', emailResult.error)
       }
     } catch (emailError) {
       console.error('❌ Email sending failed:', emailError)
       // Don't fail the update if email fails
     }
 
-    console.log(`✅ Booking ${id} updated to ${status}`)
+    console.log(`✅ Booking ${id} updated successfully`)
 
     res.status(200).json({
       success: true,
@@ -204,7 +202,7 @@ async function deleteBooking(req, res) {
     console.log(`🗑️ Deleting booking ${id}...`)
 
     // Delete the booking
-    const result = await db.run('DELETE FROM bookings WHERE id = ?', [id])
+    const result = await db.run('DELETE FROM bookings WHERE id = $1', [id])
 
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Booking not found' })

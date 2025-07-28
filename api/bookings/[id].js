@@ -1,5 +1,4 @@
 // api/bookings/[id].js - Individual booking operations
-import pg from 'pg'
 import {
   sendBookingConfirmationEmail,
   sendPaymentConfirmationEmail,
@@ -7,19 +6,8 @@ import {
   sendAdminNotificationEmail,
 } from '../../lib/email.js'
 
-const { Pool } = pg
-
-// Create PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.DB_URL,
-  ssl:
-    process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: false }
-      : false,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-})
+// Import database for Vercel deployment
+import { db } from '../../lib/db-vercel.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -60,25 +48,16 @@ export default async function handler(req, res) {
 // Get single booking
 async function getBooking(req, res, id) {
   try {
-    const client = await pool.connect()
+    const booking = await db.get('SELECT * FROM bookings WHERE id = $1', [id])
 
-    try {
-      const result = await client.query(
-        'SELECT * FROM bookings WHERE id = $1',
-        [id]
-      )
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Booking not found' })
-      }
-
-      res.status(200).json({
-        success: true,
-        booking: result.rows[0],
-      })
-    } finally {
-      client.release()
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' })
     }
+
+    res.status(200).json({
+      success: true,
+      booking,
+    })
   } catch (error) {
     console.error('Get booking error:', error)
     res.status(500).json({
@@ -100,53 +79,39 @@ async function updateBooking(req, res, id) {
       return res.status(400).json({ error: 'Invalid status' })
     }
 
-    const client = await pool.connect()
+    const result = await db.run(
+      'UPDATE bookings SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+      [status, notes || null, id]
+    )
 
-    try {
-      // Get current booking to check status change
-      const currentBooking = await client.query(
-        'SELECT * FROM bookings WHERE id = $1',
-        [id]
-      )
-
-      if (currentBooking.rows.length === 0) {
-        return res.status(404).json({ error: 'Booking not found' })
-      }
-
-      const oldStatus = currentBooking.rows[0].status
-
-      const result = await client.query(
-        'UPDATE bookings SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
-        [status, notes || null, id]
-      )
-
-      const booking = result.rows[0]
-      console.log('Booking updated successfully')
-
-      // Send email notifications
-      try {
-        if (status === 'confirmed') {
-          // Send payment confirmation email
-          await sendPaymentConfirmationEmail(booking)
-          console.log('✅ Payment confirmation email sent to:', booking.email)
-        } else if (oldStatus !== status) {
-          // Send status update email
-          await sendStatusUpdateEmail(booking, oldStatus, status)
-          console.log('✅ Status update email sent to:', booking.email)
-        }
-      } catch (emailError) {
-        console.error('❌ Email sending failed:', emailError)
-        // Don't fail the update if email fails
-      }
-
-      res.status(200).json({
-        success: true,
-        booking,
-        message: 'Booking updated successfully',
-      })
-    } finally {
-      client.release()
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Booking not found' })
     }
+
+    // Get updated booking
+    const booking = await db.get('SELECT * FROM bookings WHERE id = $1', [id])
+
+    // Send emails based on status
+    try {
+      if (status === 'confirmed') {
+        console.log('📧 Sending payment confirmation email...')
+        await sendPaymentConfirmationEmail(booking)
+      } else if (status === 'cancelled') {
+        console.log('📧 Sending status update email...')
+        await sendStatusUpdateEmail(booking, status)
+      }
+    } catch (emailError) {
+      console.error('❌ Email sending failed:', emailError)
+      // Don't fail the update if email fails
+    }
+
+    console.log(`✅ Booking ${id} updated to ${status}`)
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking updated successfully',
+      booking,
+    })
   } catch (error) {
     console.error('Update booking error:', error)
     res.status(500).json({
@@ -160,29 +125,20 @@ async function updateBooking(req, res, id) {
 // Delete booking
 async function deleteBooking(req, res, id) {
   try {
-    console.log('Deleting booking:', id)
+    console.log(`🗑️ Deleting booking ${id}...`)
 
-    const client = await pool.connect()
+    const result = await db.run('DELETE FROM bookings WHERE id = $1', [id])
 
-    try {
-      const result = await client.query(
-        'DELETE FROM bookings WHERE id = $1 RETURNING *',
-        [id]
-      )
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Booking not found' })
-      }
-
-      console.log('Booking deleted successfully:', id)
-
-      res.status(200).json({
-        success: true,
-        message: 'Booking deleted successfully',
-      })
-    } finally {
-      client.release()
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Booking not found' })
     }
+
+    console.log(`✅ Booking ${id} deleted successfully`)
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking deleted successfully',
+    })
   } catch (error) {
     console.error('Delete booking error:', error)
     res.status(500).json({

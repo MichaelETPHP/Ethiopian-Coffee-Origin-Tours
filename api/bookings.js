@@ -5,8 +5,8 @@ import {
   sendAdminNotificationEmail,
 } from '../lib/email.js'
 
-// Import database from server
-import { db } from '../server/index.js'
+// Import database for Vercel deployment
+import { db } from '../lib/db-vercel.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
 
         // Verify admin user exists
         const adminUser = await db.get(
-          'SELECT id, username, role FROM admin_users WHERE id = ?',
+          'SELECT id, username, role FROM admin_users WHERE id = $1',
           [decoded.userId]
         )
 
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
         }
 
         // Delete the booking
-        const result = await db.run('DELETE FROM bookings WHERE id = ?', [id])
+        const result = await db.run('DELETE FROM bookings WHERE id = $1', [id])
 
         if (result.changes === 0) {
           return res.status(404).json({ error: 'Booking not found' })
@@ -113,7 +113,7 @@ export default async function handler(req, res) {
         // Check for duplicate bookings
         const existingBooking = await db.get(
           `SELECT id FROM bookings 
-           WHERE email = ? AND selected_package = ? 
+           WHERE email = $1 AND selected_package = $2 
            AND (status IS NULL OR status != 'cancelled')`,
           [email, selectedPackage]
         )
@@ -130,7 +130,7 @@ export default async function handler(req, res) {
           `INSERT INTO bookings (
             full_name, age, email, phone, country, booking_type, 
             number_of_people, selected_package, status, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())`,
           [
             fullName,
             age,
@@ -144,7 +144,7 @@ export default async function handler(req, res) {
         )
 
         // Get the created booking
-        const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [
+        const booking = await db.get('SELECT * FROM bookings WHERE id = $1', [
           result.lastID,
         ])
 
