@@ -20,37 +20,43 @@ export default async function handler(req, res) {
 
   try {
     console.log('🧪 Testing JWT creation for Google Sheets...')
-    
+
     // Check environment variables
     const hasClientEmail = !!process.env.GOOGLE_CLIENT_EMAIL
     const hasPrivateKey = !!process.env.GOOGLE_PRIVATE_KEY
     const clientEmail = process.env.GOOGLE_CLIENT_EMAIL
     const privateKeyLength = process.env.GOOGLE_PRIVATE_KEY?.length || 0
-    
+
     console.log('🔧 Environment check:', {
       hasClientEmail,
       hasPrivateKey,
       clientEmail,
-      privateKeyLength
+      privateKeyLength,
     })
 
     if (!hasClientEmail || !hasPrivateKey) {
       return res.status(500).json({
         error: 'Missing environment variables',
-        details: { hasClientEmail, hasPrivateKey }
+        details: { hasClientEmail, hasPrivateKey },
       })
     }
 
     // Process private key
     let privateKey = process.env.GOOGLE_PRIVATE_KEY
     privateKey = privateKey.replace(/\\n/g, '\n')
-    
+
     console.log('🔧 Private key processing:')
     console.log('   - Original length:', process.env.GOOGLE_PRIVATE_KEY.length)
     console.log('   - Processed length:', privateKey.length)
     console.log('   - Has newlines:', privateKey.includes('\n'))
-    console.log('   - Starts correctly:', privateKey.startsWith('-----BEGIN PRIVATE KEY-----'))
-    console.log('   - Ends correctly:', privateKey.includes('-----END PRIVATE KEY-----'))
+    console.log(
+      '   - Starts correctly:',
+      privateKey.startsWith('-----BEGIN PRIVATE KEY-----')
+    )
+    console.log(
+      '   - Ends correctly:',
+      privateKey.includes('-----END PRIVATE KEY-----')
+    )
     console.log('   - First 60 chars:', privateKey.substring(0, 60))
 
     // Create JWT
@@ -66,7 +72,7 @@ export default async function handler(req, res) {
     // Test authentication
     console.log('🔧 Testing authentication...')
     const accessToken = await auth.getAccessToken()
-    
+
     console.log('✅ Access token obtained:', accessToken.token ? 'YES' : 'NO')
 
     res.status(200).json({
@@ -77,7 +83,7 @@ export default async function handler(req, res) {
           hasClientEmail,
           hasPrivateKey,
           clientEmail,
-          privateKeyLength
+          privateKeyLength,
         },
         privateKey: {
           originalLength: process.env.GOOGLE_PRIVATE_KEY.length,
@@ -85,18 +91,17 @@ export default async function handler(req, res) {
           hasNewlines: privateKey.includes('\n'),
           startsCorrectly: privateKey.startsWith('-----BEGIN PRIVATE KEY-----'),
           endsCorrectly: privateKey.includes('-----END PRIVATE KEY-----'),
-          first60: privateKey.substring(0, 60)
+          first60: privateKey.substring(0, 60),
         },
         authentication: {
           jwtCreated: true,
-          accessTokenObtained: !!accessToken.token
-        }
-      }
+          accessTokenObtained: !!accessToken.token,
+        },
+      },
     })
-
   } catch (error) {
     console.error('❌ JWT test failed:', error)
-    
+
     res.status(500).json({
       status: 'ERROR',
       message: 'JWT authentication failed',
@@ -105,8 +110,8 @@ export default async function handler(req, res) {
       details: {
         hasClientEmail: !!process.env.GOOGLE_CLIENT_EMAIL,
         hasPrivateKey: !!process.env.GOOGLE_PRIVATE_KEY,
-        privateKeyLength: process.env.GOOGLE_PRIVATE_KEY?.length || 0
-      }
+        privateKeyLength: process.env.GOOGLE_PRIVATE_KEY?.length || 0,
+      },
     })
   }
 }
