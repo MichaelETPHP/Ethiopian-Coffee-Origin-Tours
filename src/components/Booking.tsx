@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { submitBooking } from '../lib/api-utils'
 
 interface BookingFormData {
   fullName: string
@@ -54,36 +55,27 @@ const BookingForm = () => {
     setErrorMessage('')
 
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+      const result = await submitBooking(formData)
+
+      setSubmitStatus('success')
+      // Reset form
+      setFormData({
+        fullName: '',
+        email: '',
+        phone: '',
+        age: '',
+        country: '',
+        bookingType: 'individual',
+        numberOfPeople: 1,
+        selectedPackage: '',
       })
-
-      const result = await response.json()
-
-      if (response.ok) {
-        setSubmitStatus('success')
-        // Reset form
-        setFormData({
-          fullName: '',
-          email: '',
-          phone: '',
-          age: '',
-          country: '',
-          bookingType: 'individual',
-          numberOfPeople: 1,
-          selectedPackage: '',
-        })
-      } else {
-        setSubmitStatus('error')
-        setErrorMessage(result.error || 'Failed to submit booking')
-      }
     } catch (error) {
       setSubmitStatus('error')
-      setErrorMessage('Network error. Please try again.')
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Network error. Please try again.'
+      )
     } finally {
       setIsSubmitting(false)
     }
