@@ -20,15 +20,15 @@ export default async function handler(req, res) {
 
   try {
     console.log('🧪 Testing Google Sheets connection...')
-    
+
     // Test environment variables
     const envCheck = {
       hasClientEmail: !!process.env.GOOGLE_CLIENT_EMAIL,
       hasPrivateKey: !!process.env.GOOGLE_PRIVATE_KEY,
       clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
-      privateKeyLength: process.env.GOOGLE_PRIVATE_KEY?.length || 0
+      privateKeyLength: process.env.GOOGLE_PRIVATE_KEY?.length || 0,
     }
-    
+
     console.log('🔧 Environment check:', envCheck)
 
     // Test spreadsheet initialization
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       country: 'Test Country',
       bookingType: 'individual',
       numberOfPeople: 1,
-      selectedPackage: 'Test Package'
+      selectedPackage: 'Test Package',
     })
 
     console.log('✅ Test booking created:', testBooking.id)
@@ -59,14 +59,13 @@ export default async function handler(req, res) {
         testBooking: {
           id: testBooking.id,
           name: testBooking.fullName,
-          email: testBooking.email
-        }
-      }
+          email: testBooking.email,
+        },
+      },
     })
-
   } catch (error) {
     console.error('❌ Google Sheets test failed:', error)
-    
+
     res.status(500).json({
       status: 'ERROR',
       message: 'Google Sheets test failed',
@@ -74,8 +73,8 @@ export default async function handler(req, res) {
       details: {
         hasClientEmail: !!process.env.GOOGLE_CLIENT_EMAIL,
         hasPrivateKey: !!process.env.GOOGLE_PRIVATE_KEY,
-        privateKeyLength: process.env.GOOGLE_PRIVATE_KEY?.length || 0
-      }
+        privateKeyLength: process.env.GOOGLE_PRIVATE_KEY?.length || 0,
+      },
     })
   }
 }
