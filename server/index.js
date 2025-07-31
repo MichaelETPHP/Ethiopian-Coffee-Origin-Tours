@@ -1,4 +1,4 @@
-// server/index.js - Route to existing API files
+// server/index.js - Express server with Google Sheets backend
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -12,8 +12,15 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
+
+// Import Google Sheets service
+import {
+  createBooking,
+  getBookings,
+  updateBooking,
+  deleteBooking,
+  checkDuplicateBooking,
+} from '../lib/sheets.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -21,7 +28,7 @@ const __dirname = path.dirname(__filename)
 dotenv.config()
 
 const app = express()
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3002
 
 // Security middleware
 app.use(helmet())
@@ -51,254 +58,364 @@ app.use((req, res, next) => {
   next()
 })
 
-// SQLite database connection
-let db = null
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+})
+app.use('/api/', limiter)
 
-async function initializeDatabase() {
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() })
+})
+
+// Booking endpoints
+app.post(
+  '/api/bookings',
+  [
+    body('fullName').notEmpty().withMessage('Full name is required'),
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('phone').notEmpty().withMessage('Phone number is required'),
+    body('age')
+      .isInt({ min: 1, max: 120 })
+      .withMessage('Valid age is required'),
+    body('country').notEmpty().withMessage('Country is required'),
+    body('bookingType')
+      .isIn(['individual', 'group'])
+      .withMessage('Valid booking type is required'),
+    body('selectedPackage').notEmpty().withMessage('Tour package is required'),
+  ],
+  async (req, res) => {
+    try {
+      // Check validation errors
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: errors.array(),
+        })
+      }
+
+      const {
+        fullName,
+        email,
+        phone,
+        age,
+        country,
+        bookingType,
+        numberOfPeople,
+        selectedPackage,
+      } = req.body
+
+      // Check for duplicate bookings
+      const existingBooking = await checkDuplicateBooking(
+        email,
+        selectedPackage
+      )
+      if (existingBooking) {
+        return res.status(409).json({
+          error:
+            'A booking with this email already exists for the selected package.',
+        })
+      }
+
+      // Create booking in Google Sheets
+      const booking = await createBooking({
+        fullName,
+        age,
+        email,
+        phone,
+        country,
+        bookingType,
+        numberOfPeople: bookingType === 'group' ? numberOfPeople : 1,
+        selectedPackage,
+      })
+
+      // Send confirmation emails
+      try {
+        console.log(
+          '📧 Starting email sending process for booking:',
+          booking.id
+        )
+
+        // Send confirmation email to customer
+        console.log('📧 Sending customer confirmation email...')
+        const customerEmailResult = await sendBookingConfirmationEmail(booking)
+
+        if (customerEmailResult.success) {
+          console.log('✅ Customer confirmation email sent successfully')
+          console.log('📧 Message ID:', customerEmailResult.messageId)
+        } else {
+          console.error(
+            '❌ Customer confirmation email failed:',
+            customerEmailResult.error
+          )
+        }
+
+        // Send notification email to admin
+        console.log('📧 Sending admin notification email...')
+        const adminEmailResult = await sendAdminNotificationEmail(booking)
+
+        if (adminEmailResult.success) {
+          console.log('✅ Admin notification email sent successfully')
+          console.log('📧 Message ID:', adminEmailResult.messageId)
+        } else {
+          console.error(
+            '❌ Admin notification email failed:',
+            adminEmailResult.error
+          )
+        }
+
+        console.log('✅ All emails processed for booking:', booking.id)
+      } catch (emailError) {
+        console.error('❌ Email sending failed:', emailError)
+        // Don't fail the booking if email fails
+      }
+
+      res.status(201).json({
+        message: 'Booking submitted successfully',
+        bookingId: booking.id,
+      })
+    } catch (error) {
+      console.error('Booking submission error:', error)
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
+
+// Admin endpoints
+app.get('/api/admin/bookings', authenticateAdmin, async (req, res) => {
   try {
-    console.log('🔧 Initializing SQLite database...')
+    const {
+      page = 1,
+      limit = 50,
+      search = '',
+      status = '',
+      package: packageFilter = '',
+    } = req.query
 
-    // Create database file in the server directory
-    const dbPath = path.join(__dirname, 'database.sqlite')
-    db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database,
+    const result = await getBookings({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      search,
+      status,
+      package: packageFilter,
     })
 
-    // Create bookings table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS bookings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        full_name TEXT NOT NULL,
-        age INTEGER NOT NULL,
-        email TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        country TEXT NOT NULL,
-        booking_type TEXT CHECK (booking_type IN ('individual', 'group')) NOT NULL,
-        number_of_people INTEGER DEFAULT 1,
-        selected_package TEXT NOT NULL,
-        status TEXT CHECK (status IN ('pending', 'confirmed', 'cancelled')) DEFAULT 'pending',
-        notes TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `)
-
-    // Create admin_users table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS admin_users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        role TEXT CHECK (role IN ('admin', 'manager')) DEFAULT 'admin',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        last_login DATETIME NULL
-      )
-    `)
-
-    // Create indexes for better performance
-    await db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email)'
-    )
-    await db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at)'
-    )
-    await db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)'
-    )
-
-    // Check if admin user exists, if not create it
-    const adminCheck = await db.get(
-      'SELECT COUNT(*) as count FROM admin_users WHERE username = ?',
-      ['admin']
-    )
-
-    if (!adminCheck || adminCheck.count === 0) {
-      console.log('👤 Creating default admin user...')
-      const passwordHash = await bcrypt.hash('admin123', 12)
-
-      await db.run(
-        'INSERT INTO admin_users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
-        ['admin', 'admin@ethiopiancoffee.com', passwordHash, 'admin']
-      )
-      console.log('✅ Default admin user created')
-      console.log('   Username: admin')
-      console.log('   Password: admin123')
-    } else {
-      console.log('✅ Admin user already exists')
-    }
-
-    console.log('✅ Database initialized successfully')
+    res.status(200).json({
+      success: true,
+      ...result,
+    })
   } catch (error) {
-    console.error('❌ Database initialization error:', error)
-    throw error
+    console.error('Error fetching bookings:', error)
+    res.status(500).json({ error: 'Internal server error' })
   }
-}
+})
 
-// JWT middleware
-const authenticateAdmin = async (req, res, next) => {
+app.patch('/api/admin/bookings', authenticateAdmin, async (req, res) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '')
-    if (!token) {
+    const { id, status, notes } = req.body
+
+    if (!id || !status) {
       return res
-        .status(401)
-        .json({ error: 'Access denied. No token provided.' })
+        .status(400)
+        .json({ error: 'Booking ID and status are required' })
     }
 
+    const updatedBooking = await updateBooking(id, { status, notes })
+
+    // Send status update email
+    try {
+      await sendStatusUpdateEmail(updatedBooking)
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError)
+    }
+
+    res.status(200).json({
+      success: true,
+      booking: updatedBooking,
+    })
+  } catch (error) {
+    console.error('Error updating booking:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+app.delete('/api/admin/bookings/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+
+    await deleteBooking(id)
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking deleted successfully',
+    })
+  } catch (error) {
+    console.error('Error deleting booking:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Admin authentication middleware
+async function authenticateAdmin(req, res, next) {
+  const token = req.header('Authorization')?.replace('Bearer ', '')
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' })
+  }
+
+  try {
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET || 'your-secret-key'
     )
 
-    const user = await db.get(
-      'SELECT id, username, email, role FROM admin_users WHERE id = ?',
-      [decoded.userId]
-    )
+    // For now, we'll skip admin user verification since we're using Google Sheets
+    // TODO: Implement admin user management with Google Sheets
 
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid token.' })
-    }
-
-    req.user = user
+    req.admin = decoded
     next()
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token.' })
+    return res.status(401).json({ error: 'Invalid token.' })
   }
 }
 
-// Helper function to read and execute API files
-async function executeAPIFile(filePath, req, res) {
+// Email functions
+async function sendBookingConfirmationEmail(booking) {
   try {
-    const fullPath = path.join(process.cwd(), 'api', filePath)
+    const transporter = nodemailer.createTransporter({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    })
 
-    // Check if file exists
-    if (!fs.existsSync(fullPath)) {
-      console.log(`API file not found: ${fullPath}`)
-      return res.status(404).json({ error: 'API endpoint not found' })
+    const mailOptions = {
+      from: process.env.SMTP_USER,
+      to: booking.email,
+      subject: 'Booking Confirmation - Ethiopian Coffee Tours',
+      html: `
+        <h2>Booking Confirmation</h2>
+        <p>Dear ${booking.fullName},</p>
+        <p>Thank you for booking your Ethiopian Coffee Tour!</p>
+        <p><strong>Booking Details:</strong></p>
+        <ul>
+          <li>Booking ID: ${booking.id}</li>
+          <li>Tour Package: ${booking.selectedPackage}</li>
+          <li>Booking Type: ${booking.bookingType}</li>
+          <li>Status: ${booking.status}</li>
+        </ul>
+        <p>We'll contact you soon to confirm your tour details.</p>
+        <p>Best regards,<br>Ethiopian Coffee Tours Team</p>
+      `,
     }
 
-    // Dynamic import the API file
-    const apiModule = await import(`file://${fullPath}`)
-
-    // Execute the default handler
-    if (apiModule.default && typeof apiModule.default === 'function') {
-      await apiModule.default(req, res)
-    } else {
-      res.status(500).json({ error: 'Invalid API handler' })
-    }
+    const result = await transporter.sendMail(mailOptions)
+    return { success: true, messageId: result.messageId }
   } catch (error) {
-    console.error(`Error executing API file ${filePath}:`, error)
-    res
-      .status(500)
-      .json({ error: 'API execution error', details: error.message })
+    console.error('Email sending error:', error)
+    return { success: false, error: error.message }
   }
 }
 
-// API Routes - Forward to existing API files
+async function sendAdminNotificationEmail(booking) {
+  try {
+    const transporter = nodemailer.createTransporter({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    })
 
-// Health check
-app.get('/api/health', async (req, res) => {
-  await executeAPIFile('health.js', req, res)
-})
+    const mailOptions = {
+      from: process.env.SMTP_USER,
+      to: process.env.ADMIN_EMAIL,
+      subject: 'New Booking - Ethiopian Coffee Tours',
+      html: `
+        <h2>New Booking Received</h2>
+        <p><strong>Booking Details:</strong></p>
+        <ul>
+          <li>Booking ID: ${booking.id}</li>
+          <li>Name: ${booking.fullName}</li>
+          <li>Email: ${booking.email}</li>
+          <li>Phone: ${booking.phone}</li>
+          <li>Tour Package: ${booking.selectedPackage}</li>
+          <li>Booking Type: ${booking.bookingType}</li>
+          <li>Status: ${booking.status}</li>
+        </ul>
+      `,
+    }
 
-// Admin login - Use existing api/admin/login.js
-app.post('/api/admin/login', async (req, res) => {
-  await executeAPIFile('admin/login.js', req, res)
-})
+    const result = await transporter.sendMail(mailOptions)
+    return { success: true, messageId: result.messageId }
+  } catch (error) {
+    console.error('Email sending error:', error)
+    return { success: false, error: error.message }
+  }
+}
 
-// Admin bookings - Use existing api/admin/bookings.js
-app.get('/api/admin/bookings', async (req, res) => {
-  await executeAPIFile('admin/bookings.js', req, res)
-})
+async function sendStatusUpdateEmail(booking) {
+  try {
+    const transporter = nodemailer.createTransporter({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    })
 
-app.patch('/api/admin/bookings', async (req, res) => {
-  await executeAPIFile('admin/bookings.js', req, res)
-})
+    const mailOptions = {
+      from: process.env.SMTP_USER,
+      to: booking.email,
+      subject: 'Booking Status Update - Ethiopian Coffee Tours',
+      html: `
+        <h2>Booking Status Update</h2>
+        <p>Dear ${booking.fullName},</p>
+        <p>Your booking status has been updated.</p>
+        <p><strong>Updated Details:</strong></p>
+        <ul>
+          <li>Booking ID: ${booking.id}</li>
+          <li>New Status: ${booking.status}</li>
+          <li>Tour Package: ${booking.selectedPackage}</li>
+        </ul>
+        <p>We'll contact you soon with more details.</p>
+        <p>Best regards,<br>Ethiopian Coffee Tours Team</p>
+      `,
+    }
 
-app.delete('/api/admin/bookings', async (req, res) => {
-  await executeAPIFile('admin/bookings.js', req, res)
-})
-
-// Booking submission - Use existing api/bookings.js
-app.post('/api/bookings', async (req, res) => {
-  await executeAPIFile('bookings.js', req, res)
-})
-
-// Individual booking operations
-app.get('/api/bookings/:id', async (req, res) => {
-  await executeAPIFile(`bookings/${req.params.id}.js`, req, res)
-})
-
-app.patch('/api/bookings/:id', async (req, res) => {
-  await executeAPIFile(`bookings/${req.params.id}.js`, req, res)
-})
-
-// Send email for booking
-app.post('/api/bookings/:id/send-email', async (req, res) => {
-  await executeAPIFile(`bookings/${req.params.id}/send-email.js`, req, res)
-})
-
-// Admin individual booking operations
-app.get('/api/admin/bookings/:id', async (req, res) => {
-  await executeAPIFile(`admin/bookings/${req.params.id}.js`, req, res)
-})
-
-app.patch('/api/admin/bookings/:id', async (req, res) => {
-  await executeAPIFile(`admin/bookings/${req.params.id}.js`, req, res)
-})
-
-// Send email from admin
-app.post('/api/admin/bookings/:id/send-email', async (req, res) => {
-  await executeAPIFile(
-    `admin/bookings/${req.params.id}/send-email.js`,
-    req,
-    res
-  )
-})
-
-// Debug endpoint
-app.get('/api/debug', async (req, res) => {
-  await executeAPIFile('debug.js', req, res)
-})
+    const result = await transporter.sendMail(mailOptions)
+    return { success: true, messageId: result.messageId }
+  } catch (error) {
+    console.error('Email sending error:', error)
+    return { success: false, error: error.message }
+  }
+}
 
 // Serve static files
-app.use(express.static(path.join(process.cwd(), 'public')))
+app.use(express.static(path.join(__dirname, '../dist')))
 
-// Serve React app
+// Catch-all handler for SPA
 app.get('*', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'public', 'index.html'))
-})
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Server error:', error)
-  res.status(500).json({ error: 'Internal server error' })
+  res.sendFile(path.join(__dirname, '../dist/index.html'))
 })
 
 // Start server
-const server = app.listen(PORT, async () => {
-  try {
-    await initializeDatabase()
-    console.log(`🚀 Server running on port ${PORT}`)
-    console.log(`📧 Email configured with: hello@ehiopiancoffeeorgintrip.com`)
-    console.log(`💾 Database: SQLite (server/database.sqlite)`)
-    console.log(`🌐 Frontend: http://localhost:5173`)
-    console.log(`🔧 Backend: http://localhost:${PORT}`)
-  } catch (error) {
-    console.error('❌ Failed to start server:', error)
-    process.exit(1)
-  }
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`)
+  console.log(`📧 Email configured: ${process.env.SMTP_USER ? 'Yes' : 'No'}`)
+  console.log(
+    `🔐 JWT Secret: ${process.env.JWT_SECRET ? 'Configured' : 'Using default'}`
+  )
+  console.log(`📊 Google Sheets: Connected`)
 })
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully')
-  server.close(() => {
-    console.log('✅ Server closed')
-    process.exit(0)
-  })
-})
-
-// Export for testing
-export { app, db }

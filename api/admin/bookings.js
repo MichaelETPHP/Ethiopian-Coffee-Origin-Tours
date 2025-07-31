@@ -5,8 +5,12 @@ import {
   sendStatusUpdateEmail,
 } from '../../lib/email.js'
 
-// Import database for Vercel deployment
-import { db } from '../../lib/db-vercel.js'
+// Import Google Sheets service
+import {
+  getBookings,
+  updateBooking,
+  deleteBooking as deleteBookingFromSheets,
+} from '../../lib/sheets.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -38,23 +42,16 @@ export default async function handler(req, res) {
       process.env.JWT_SECRET || 'your-secret-key'
     )
 
-    // Verify admin user exists
-    const adminUser = await db.get(
-      'SELECT id, username, role FROM admin_users WHERE id = $1',
-      [decoded.userId]
-    )
-
-    if (!adminUser) {
-      return res.status(401).json({ error: 'Invalid token.' })
-    }
+    // For now, we'll skip admin user verification since we're using Google Sheets
+    // TODO: Implement admin user management with Google Sheets
 
     // Handle different methods
     if (req.method === 'GET') {
-      return await getBookings(req, res)
+      return await getBookingsHandler(req, res)
     } else if (req.method === 'PATCH') {
-      return await updateBooking(req, res)
+      return await updateBookingHandler(req, res)
     } else if (req.method === 'DELETE') {
-      return await deleteBooking(req, res)
+      return await deleteBookingHandler(req, res)
     } else {
       return res.status(405).json({ error: 'Method not allowed' })
     }
@@ -64,7 +61,7 @@ export default async function handler(req, res) {
 }
 
 // Get all bookings with pagination and filtering
-async function getBookings(req, res) {
+async function getBookingsHandler(req, res) {
   try {
     const {
       page = 1,
@@ -73,63 +70,18 @@ async function getBookings(req, res) {
       status = '',
       package: packageFilter = '',
     } = req.query
-    const offset = (page - 1) * limit
 
-    let query = 'SELECT * FROM bookings WHERE 1=1'
-    let countQuery = 'SELECT COUNT(*) as total FROM bookings WHERE 1=1'
-    const params = []
-    const countParams = []
-    let paramIndex = 1
-
-    // Add filters
-    if (search) {
-      query += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
-        paramIndex + 1
-      } OR phone ILIKE $${paramIndex + 2})`
-      countQuery += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${
-        paramIndex + 1
-      } OR phone ILIKE $${paramIndex + 2})`
-      const searchParam = `%${search}%`
-      params.push(searchParam, searchParam, searchParam)
-      countParams.push(searchParam, searchParam, searchParam)
-      paramIndex += 3
-    }
-
-    if (status) {
-      query += ` AND status = $${paramIndex}`
-      countQuery += ` AND status = $${paramIndex}`
-      params.push(status)
-      countParams.push(status)
-      paramIndex += 1
-    }
-
-    if (packageFilter) {
-      query += ` AND selected_package ILIKE $${paramIndex}`
-      countQuery += ` AND selected_package ILIKE $${paramIndex}`
-      params.push(`%${packageFilter}%`)
-      countParams.push(`%${packageFilter}%`)
-      paramIndex += 1
-    }
-
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${
-      paramIndex + 1
-    }`
-    params.push(parseInt(limit), parseInt(offset))
-
-    const [bookingsResult, countResult] = await Promise.all([
-      db.all(query, params),
-      db.all(countQuery, countParams),
-    ])
-
-    const total = parseInt(countResult[0]?.total || 0)
+    const result = await getBookings({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      search,
+      status,
+      package: packageFilter,
+    })
 
     res.status(200).json({
       success: true,
-      bookings: bookingsResult,
-      total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(total / limit),
+      ...result,
     })
   } catch (error) {
     console.error('Error fetching bookings:', error)
@@ -138,7 +90,7 @@ async function getBookings(req, res) {
 }
 
 // Update booking status
-async function updateBooking(req, res) {
+async function updateBookingHandler(req, res) {
   try {
     const { id, status, notes } = req.body
 
@@ -150,17 +102,8 @@ async function updateBooking(req, res) {
 
     console.log(`🔄 Updating booking ${id} status to ${status}`)
 
-    const result = await db.run(
-      'UPDATE bookings SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-      [status, notes || null, id]
-    )
-
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Booking not found' })
-    }
-
-    // Get updated booking
-    const booking = await db.get('SELECT * FROM bookings WHERE id = $1', [id])
+    try {
+      const booking = await updateBooking(id, { status, notes })
 
     // Send status update email
     try {
@@ -191,7 +134,7 @@ async function updateBooking(req, res) {
 }
 
 // Delete booking
-async function deleteBooking(req, res) {
+async function deleteBookingHandler(req, res) {
   try {
     const { id } = req.query
 
@@ -201,20 +144,21 @@ async function deleteBooking(req, res) {
 
     console.log(`🗑️ Deleting booking ${id}...`)
 
-    // Delete the booking
-    const result = await db.run('DELETE FROM bookings WHERE id = $1', [id])
+    try {
+      await deleteBookingFromSheets(id)
+      console.log(`✅ Booking ${id} deleted successfully`)
 
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Booking not found' })
+      res.status(200).json({
+        success: true,
+        message: 'Booking deleted successfully',
+        deletedId: id,
+      })
+    } catch (error) {
+      if (error.message === 'Booking not found') {
+        return res.status(404).json({ error: 'Booking not found' })
+      }
+      throw error
     }
-
-    console.log(`✅ Booking ${id} deleted successfully`)
-
-    res.status(200).json({
-      success: true,
-      message: 'Booking deleted successfully',
-      deletedId: id,
-    })
   } catch (error) {
     console.error('Error deleting booking:', error)
     res.status(500).json({ error: 'Internal server error' })

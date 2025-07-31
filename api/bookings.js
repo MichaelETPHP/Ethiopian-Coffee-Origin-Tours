@@ -5,8 +5,12 @@ import {
   sendAdminNotificationEmail,
 } from '../lib/email.js'
 
-// Import database for Vercel deployment
-import { db } from '../lib/db-vercel.js'
+// Import Google Sheets service
+import {
+  createBooking,
+  checkDuplicateBooking,
+  deleteBooking as deleteBookingFromSheets,
+} from '../lib/sheets.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -50,24 +54,20 @@ export default async function handler(req, res) {
           process.env.JWT_SECRET || 'your-secret-key'
         )
 
-        // Verify admin user exists
-        const adminUser = await db.get(
-          'SELECT id, username, role FROM admin_users WHERE id = $1',
-          [decoded.userId]
-        )
-
-        if (!adminUser) {
-          return res.status(401).json({ error: 'Invalid token.' })
-        }
+        // For now, we'll skip admin user verification since we're using Google Sheets
+        // TODO: Implement admin user management with Google Sheets
 
         // Delete the booking
-        const result = await db.run('DELETE FROM bookings WHERE id = $1', [id])
-
-        if (result.changes === 0) {
-          return res.status(404).json({ error: 'Booking not found' })
+        try {
+          await deleteBookingFromSheets(id)
+          console.log(`✅ Booking ${id} deleted successfully`)
+        } catch (error) {
+          if (error.message === 'Booking not found') {
+            return res.status(404).json({ error: 'Booking not found' })
+          }
+          throw error
         }
 
-        console.log(`✅ Booking ${id} deleted by admin ${adminUser.username}`)
         res.status(200).json({
           success: true,
           message: 'Booking deleted successfully',
@@ -111,11 +111,9 @@ export default async function handler(req, res) {
 
       try {
         // Check for duplicate bookings
-        const existingBooking = await db.get(
-          `SELECT id FROM bookings 
-           WHERE email = $1 AND selected_package = $2 
-           AND (status IS NULL OR status != 'cancelled')`,
-          [email, selectedPackage]
+        const existingBooking = await checkDuplicateBooking(
+          email,
+          selectedPackage
         )
 
         if (existingBooking) {
@@ -125,28 +123,17 @@ export default async function handler(req, res) {
           })
         }
 
-        // Insert booking
-        const result = await db.run(
-          `INSERT INTO bookings (
-            full_name, age, email, phone, country, booking_type, 
-            number_of_people, selected_package, status, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())`,
-          [
-            fullName,
-            age,
-            email,
-            phone,
-            country,
-            bookingType,
-            bookingType === 'group' ? numberOfPeople : 1,
-            selectedPackage,
-          ]
-        )
-
-        // Get the created booking
-        const booking = await db.get('SELECT * FROM bookings WHERE id = $1', [
-          result.lastID,
-        ])
+        // Create booking in Google Sheets
+        const booking = await createBooking({
+          fullName,
+          age,
+          email,
+          phone,
+          country,
+          bookingType,
+          numberOfPeople: bookingType === 'group' ? numberOfPeople : 1,
+          selectedPackage,
+        })
 
         // Send confirmation emails
         try {

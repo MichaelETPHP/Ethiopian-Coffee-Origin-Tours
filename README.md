@@ -15,7 +15,7 @@ A modern, responsive website showcasing authentic coffee tourism experiences in 
 
 - **Frontend**: React 18 with TypeScript
 - **Backend**: Node.js with Express
-- **Database**: PostgreSQL
+- **Database**: Google Sheets (No database setup required!)
 - **Authentication**: JWT with bcrypt
 - **Styling**: Tailwind CSS
 - **Build Tool**: Vite
@@ -43,7 +43,17 @@ A modern, responsive website showcasing authentic coffee tourism experiences in 
    npm run dev
    ```
 
-4. **Open your browser**
+4. **Set up Google Sheets** (Required for booking functionality)
+
+   ```bash
+   # Copy the environment template
+   cp sheets.env.example .env
+
+   # Follow the setup guide
+   # See GOOGLE_SHEETS_SETUP.md for detailed instructions
+   ```
+
+5. **Open your browser**
    Navigate to `http://localhost:5173`
 
 ## 🏗️ Project Structure
@@ -57,7 +67,7 @@ A modern, responsive website showcasing authentic coffee tourism experiences in 
 │   └── health.js      # Health check endpoint
 ├── lib/               # Utility libraries
 │   ├── auth.js        # Authentication utilities
-│   ├── db.js          # Database configuration
+│   ├── sheets.js      # Google Sheets integration
 │   ├── email.js       # Email functionality
 │   └── validation.js  # Input validation
 ├── server/            # Express server
@@ -67,12 +77,34 @@ A modern, responsive website showcasing authentic coffee tourism experiences in 
 │   ├── pages/         # Page components
 │   │   └── AdminPage.tsx # Admin dashboard
 │   └── main.tsx       # Application entry point
+├── setup-sheets.js    # Google Sheets setup script
 └── setup-admin.js     # Admin user setup script
 ```
 
-## 🎨 Key Components
+## 🗄️ Google Sheets Integration
 
-### HomePage
+This project uses **Google Sheets as the database** instead of traditional databases. This approach offers several advantages:
+
+### ✅ Benefits
+
+- **No Database Setup**: No need to configure PostgreSQL, MySQL, or other databases
+- **Easy Management**: View and edit bookings directly in Google Sheets
+- **Automatic Backup**: Google Sheets automatically backs up your data
+- **Collaboration**: Multiple team members can access and manage bookings
+- **Export Options**: Easy to export data to CSV, Excel, or other formats
+- **Real-time Updates**: Changes are reflected immediately across all devices
+
+### 📋 Setup Required
+
+1. Create a Google Cloud Project
+2. Enable Google Sheets API
+3. Create a Service Account
+4. Set up environment variables
+5. Initialize the spreadsheet
+
+**📖 See [GOOGLE_SHEETS_SETUP.md](./GOOGLE_SHEETS_SETUP.md) for complete setup instructions.**
+
+## 🎨 Key Components
 
 The main landing page featuring:
 
