@@ -10,7 +10,7 @@
     }
   ],
   "functions": {
-    "api/sheets-booking.js": {
+    "pages/api/sheets-booking.js": {
       "maxDuration": 30
     }
   }
