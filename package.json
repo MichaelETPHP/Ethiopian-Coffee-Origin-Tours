@@ -14,7 +14,8 @@
     "test:sheets": "node test-sheets.js",
     "verify:credentials": "node verify-credentials.js",
     "debug:auth": "node debug-auth.js",
-    "check:api": "node check-api.js"
+    "check:api": "node check-api.js",
+    "setup:vercel": "node setup-vercel-env.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.1",
