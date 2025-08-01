@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useRouter } from 'next/router'
 import { Coffee, Menu, X } from 'lucide-react'
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const navigate = useNavigate()
-  const location = useLocation()
+  const router = useRouter()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,7 +19,7 @@ const Header: React.FC = () => {
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false)
-  }, [location])
+  }, [router.asPath])
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -35,8 +34,8 @@ const Header: React.FC = () => {
   }, [isMobileMenuOpen])
 
   const scrollToSection = (sectionId: string) => {
-    if (location.pathname !== '/') {
-      navigate(`/#${sectionId}`)
+    if (router.pathname !== '/') {
+      router.push(`/#${sectionId}`)
       return
     }
 
@@ -48,12 +47,12 @@ const Header: React.FC = () => {
   }
 
   const handleLogoClick = () => {
-    navigate('/')
+    router.push('/')
     setIsMobileMenuOpen(false)
   }
 
   const handleBookTour = () => {
-    navigate('/booking')
+    router.push('/booking')
     setIsMobileMenuOpen(false)
   }
 

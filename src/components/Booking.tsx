@@ -55,7 +55,7 @@ const BookingForm = () => {
     setErrorMessage('')
 
     try {
-      const result = await submitBooking(formData)
+      await submitBooking({ ...formData })
 
       setSubmitStatus('success')
       // Reset form

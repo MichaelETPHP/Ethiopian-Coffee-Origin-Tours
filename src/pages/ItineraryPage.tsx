@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/router'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import {
@@ -11,7 +11,6 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  Star,
   Utensils,
   Camera,
   Plane,
@@ -21,12 +20,12 @@ import { getTourPackage } from '../data/tourData'
 import BookingModal from '../components/BookingModal'
 
 const ItineraryPage: React.FC = () => {
-  const { tourId } = useParams()
-  const navigate = useNavigate()
-  const tourData = getTourPackage(tourId)
+  const router = useRouter()
+  const { tourId } = router.query
+  const tourData = getTourPackage(tourId as string)
   const [expandedDay, setExpandedDay] = useState<number | null>(1)
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
-  const [videoLoaded, setVideoLoaded] = useState(false)
+  const [, setVideoLoaded] = useState(false)
 
   // Ensure page starts at the very top
   useEffect(() => {
@@ -34,7 +33,7 @@ const ItineraryPage: React.FC = () => {
   }, [])
 
   const handleBackToTours = () => {
-    navigate('/#tour-packages')
+    router.push('/#tour-packages')
   }
 
   const toggleDay = (day: number) => {
@@ -57,12 +56,6 @@ const ItineraryPage: React.FC = () => {
       dates: tourData.dates,
     },
   ]
-
-  const tourDataForBooking = {
-    id: tourData.id,
-    name: tourData.name,
-    dates: tourData.dates,
-  }
 
   const tourInfo = [
     {
@@ -294,7 +287,7 @@ const ItineraryPage: React.FC = () => {
 
           {/* Interactive Accordion */}
           <div className='space-y-4 sm:space-y-6'>
-            {tourData.itinerary.map((day, index) => (
+            {tourData.itinerary.map((day) => (
               <div
                 key={day.day}
                 className='bg-white rounded-xl sm:rounded-2xl shadow-sm border border-cream-200 overflow-hidden hover:shadow-md transition-all duration-300'
@@ -601,7 +594,7 @@ const ItineraryPage: React.FC = () => {
       <BookingModal
         isOpen={isBookingModalOpen}
         onClose={closeBookingModal}
-        selectedPackage={tourDataForBooking}
+        selectedPackage={tourData.id}
         packages={packagesForModal}
       />
     </>

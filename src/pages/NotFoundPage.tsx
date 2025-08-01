@@ -1,19 +1,12 @@
 import React from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import {
-  Coffee,
-  ArrowLeft,
-  Home,
-  Search,
-  MapPin,
-  Users,
-  Calendar,
-} from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
+import { Coffee, ArrowLeft, Home, MapPin, Users, Calendar } from 'lucide-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 
 const NotFoundPage: React.FC = () => {
-  const navigate = useNavigate()
+  const router = useRouter()
 
   const popularPages = [
     { name: 'Home', path: '/', icon: <Home className='h-4 w-4' /> },
@@ -67,10 +60,10 @@ const NotFoundPage: React.FC = () => {
               Popular Destinations
             </h3>
             <div className='grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto'>
-              {popularPages.map((page, index) => (
+              {popularPages.map((page) => (
                 <Link
                   key={page.name}
-                  to={page.path}
+                  href={page.path}
                   className='group bg-white/80 backdrop-blur-sm border border-coffee-200 rounded-xl p-4 hover:bg-white hover:border-coffee-400 hover:shadow-lg transition-all duration-300 hover:-translate-y-1'
                 >
                   <div className='text-coffee-600 group-hover:text-coffee-700 mb-2 flex justify-center'>
@@ -87,15 +80,15 @@ const NotFoundPage: React.FC = () => {
           {/* Action Buttons */}
           <div className='flex flex-col sm:flex-row items-center justify-center gap-4 mb-12'>
             <Link
-              to='/'
-              className='group bg-gradient-to-r from-coffee-600 to-earth-600 text-white px-8 py-4 rounded-full font-inter font-semibold hover:from-coffee-700 hover:to-earth-700 transition-all duration-300 hover:scale-105 shadow-lg flex items-center space-x-2'
+              href='/'
+              className='group bg-gradient-to-r from-coffee-600 to-earth-700 text-white px-8 py-4 rounded-full font-inter font-semibold hover:from-coffee-700 hover:to-earth-700 transition-all duration-300 hover:scale-105 shadow-lg flex items-center space-x-2'
             >
               <Home className='h-5 w-5 group-hover:rotate-12 transition-transform duration-300' />
               <span>Back to Home</span>
             </Link>
 
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => router.back()}
               className='group bg-white text-coffee-700 border-2 border-coffee-300 px-8 py-4 rounded-full font-inter font-semibold hover:border-coffee-500 hover:text-coffee-800 transition-all duration-300 hover:scale-105 shadow-lg flex items-center space-x-2'
             >
               <ArrowLeft className='h-5 w-5 group-hover:-translate-x-1 transition-transform duration-300' />

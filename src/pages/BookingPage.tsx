@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useRouter } from 'next/router'
 import {
   ArrowLeft,
   Coffee,
@@ -10,9 +10,7 @@ import {
   Users,
   Calendar,
   Check,
-  Star,
   MapPin,
-  Clock,
   Camera,
   Utensils,
   Plane,
@@ -275,9 +273,9 @@ const packages = [
 ]
 
 const BookingPage: React.FC = () => {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const preselectedPackage = searchParams.get('package') || ''
+  const router = useRouter()
+  const searchParams = router.query
+  const preselectedPackage = (searchParams.package as string) || ''
 
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -296,8 +294,10 @@ const BookingPage: React.FC = () => {
   const [error, setError] = useState<string>('')
   const [filteredCountries, setFilteredCountries] = useState<string[]>([])
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
-  const [selectedPackageDetails, setSelectedPackageDetails] =
-    useState<any>(null)
+  const [selectedPackageDetails, setSelectedPackageDetails] = useState<Record<
+    string,
+    unknown
+  > | null>(null)
 
   // Refs for scrolling and focusing
   const formRef = useRef<HTMLDivElement>(null)
@@ -374,7 +374,7 @@ const BookingPage: React.FC = () => {
     setError('')
 
     try {
-      const data = await submitBooking(formData)
+      await submitBooking({ ...formData })
 
       setIsSubmitting(false) // Stop spinning immediately on success
       setShowSuccessAnimation(true) // Show success animation
@@ -385,19 +385,20 @@ const BookingPage: React.FC = () => {
         setShowSuccessAnimation(false)
         // Auto-redirect after 5 seconds
         setTimeout(() => {
-          navigate('/')
+          router.push('/')
         }, 5000)
       }, 2000) // Show animation for 2 seconds
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Booking submission error:', error)
-      if (error.message.includes('409')) {
+      if (error instanceof Error && error.message.includes('409')) {
         setError(
           'A booking with this email already exists for the selected package.'
         )
       } else {
         setError(
-          error.message ||
-            'Network error. Please check your connection and try again.'
+          error instanceof Error
+            ? error.message
+            : 'Network error. Please check your connection and try again.'
         )
       }
     } finally {
@@ -406,7 +407,7 @@ const BookingPage: React.FC = () => {
   }
 
   const handleBackToHome = () => {
-    navigate('/')
+    router.push('/')
   }
 
   if (isSubmitted) {

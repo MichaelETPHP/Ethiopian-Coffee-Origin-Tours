@@ -8,7 +8,7 @@ import Footer from '../components/Footer'
 import CookiesPopup from '../components/CookiesPopup'
 
 const HomePage: React.FC = () => {
-  const [cookiesAccepted, setCookiesAccepted] = useState<boolean | null>(null)
+  const [, setCookiesAccepted] = useState<boolean | null>(null)
 
   const handleAcceptCookies = () => {
     setCookiesAccepted(true)

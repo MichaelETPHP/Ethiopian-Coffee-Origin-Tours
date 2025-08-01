@@ -1,15 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import {
-  X,
-  Coffee,
-  User,
-  Mail,
-  Phone,
-  Users,
-  Calendar,
-  Check,
-  Globe,
-} from 'lucide-react'
+import { X, Coffee, User, Calendar, Check, Globe } from 'lucide-react'
 import { submitBooking } from '../lib/api-utils'
 
 interface BookingModalProps {
@@ -324,7 +314,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
     setError('')
 
     try {
-      const data = await submitBooking(formData)
+      await submitBooking({ ...formData })
 
       setIsSubmitted(true)
       setIsSubmitting(false) // Stop spinning immediately on success
@@ -332,18 +322,22 @@ const BookingModal: React.FC<BookingModalProps> = ({
       setTimeout(() => {
         onClose()
       }, 4000)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Booking submission error:', error)
-      if (error.message.includes('409')) {
+      if (error instanceof Error && error.message.includes('409')) {
         setError(
           'A booking with this email already exists for the selected package.'
         )
-      } else if (error.message.includes('fetch')) {
+      } else if (error instanceof Error && error.message.includes('fetch')) {
         setError(
           'Cannot connect to server. Please check if the backend is running.'
         )
       } else {
-        setError(error.message || 'Network error. Please check your connection and try again.')
+        setError(
+          error instanceof Error
+            ? error.message
+            : 'Network error. Please check your connection and try again.'
+        )
       }
     } finally {
       setIsSubmitting(false)

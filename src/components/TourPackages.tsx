@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React from 'react'
+import { useRouter } from 'next/router'
 import {
   Calendar,
   MapPin,
@@ -16,7 +16,7 @@ interface TourPackage {
   dates: string
   duration: string
   regions: string[]
-  // price: string
+  price: string
   description: string
   image: string
   highlights: string[]
@@ -81,14 +81,14 @@ const tourPackages: TourPackage[] = [
 ]
 
 const TourPackages: React.FC = () => {
-  const navigate = useNavigate()
+  const router = useRouter()
 
   const handleReadMore = (tourId: string) => {
-    navigate(`/itinerary/${tourId}`)
+    router.push(`/itinerary/${tourId}`)
   }
 
   const handleBookTour = (tourId: string) => {
-    navigate(`/booking?package=${tourId}`)
+    router.push(`/booking?package=${tourId}`)
   }
 
   return (
@@ -332,7 +332,7 @@ const TourPackages: React.FC = () => {
                 <ArrowRight className='h-5 w-5' />
               </button>
               <button
-                onClick={() => navigate('/booking')}
+                onClick={() => router.push('/booking')}
                 className='w-full sm:w-auto border-2 border-white text-white px-6 sm:px-8 py-4 rounded-full font-inter font-medium hover:bg-white/10 hover:border-white transition-all duration-200 flex items-center justify-center space-x-2 min-h-[48px] touch-manipulation'
               >
                 <Calendar className='h-5 w-5' />

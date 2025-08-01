@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "dev:api": "node dev-server.js",
     "dev:full": "concurrently \"npm run dev:api\" \"npm run dev\"",
-    "build": "npx vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
     "vercel-build": "npm run build",
     "test:sheets": "node test-sheets.js",
     "verify:credentials": "node verify-credentials.js",
@@ -17,11 +17,7 @@
     "check:api": "node check-api.js",
     "setup:vercel": "node setup-vercel-env.js",
     "test:api-syntax": "node test-api-syntax.js",
-    "test:bookings": "node test-booking-submission.js",
-     "dev": "next dev",
-    "build": "next build", 
-    "start": "next start",
-    "api": "next dev"
+    "test:bookings": "node test-booking-submission.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.1",

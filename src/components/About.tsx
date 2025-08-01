@@ -1,28 +1,28 @@
 import React from 'react'
-import { Heart, Globe, Users, Award } from 'lucide-react'
+import { Heart, Globe, Users } from 'lucide-react'
 
-const stats = [
-  {
-    icon: <Globe className='h-5 w-5 sm:h-6 sm:w-6' />,
-    number: '25+',
-    label: 'Countries',
-  },
-  {
-    icon: <Users className='h-5 w-5 sm:h-6 sm:w-6' />,
-    number: '10K+',
-    label: 'Happy Travelers',
-  },
-  {
-    icon: <Heart className='h-5 w-5 sm:h-6 sm:w-6' />,
-    number: '500+',
-    label: 'Coffee Farms',
-  },
-  {
-    icon: <Award className='h-5 w-5 sm:h-6 sm:w-6' />,
-    number: '50+',
-    label: 'Expert Guides',
-  },
-]
+// const _stats = [
+//   {
+//     icon: <Globe className='h-5 w-5 sm:h-6 sm:w-6' />,
+//     number: '25+',
+//     label: 'Countries',
+//   },
+//   {
+//     icon: <Users className='h-5 w-5 sm:h-6 sm:w-6' />,
+//     number: '10K+',
+//     label: 'Happy Travelers',
+//   },
+//   {
+//     icon: <Heart className='h-5 w-5 sm:h-6 sm:w-6' />,
+//     number: '500+',
+//     label: 'Coffee Farms',
+//   },
+//   {
+//     icon: <Award className='h-5 w-5 sm:h-6 sm:w-6' />,
+//     number: '50+',
+//     label: 'Expert Guides',
+//   },
+// ]
 
 const About: React.FC = () => {
   return (

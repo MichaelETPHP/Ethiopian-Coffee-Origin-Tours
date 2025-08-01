@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { ArrowLeft, Coffee, Shield, FileText, Download } from 'lucide-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
@@ -14,7 +14,7 @@ const TermsPage: React.FC = () => {
         <div className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center'>
           <div className='flex items-center justify-center space-x-3 mb-6'>
             <Link
-              to='/'
+              href='/'
               className='flex items-center space-x-2 text-cream-200 hover:text-white transition-colors duration-200'
             >
               <ArrowLeft className='h-5 w-5' />
@@ -236,7 +236,7 @@ const TermsPage: React.FC = () => {
             {/* Back to Home Button */}
             <div className='mt-12 text-center'>
               <Link
-                to='/'
+                href='/'
                 className='inline-flex items-center space-x-2 bg-coffee-700 text-white px-8 py-4 rounded-full font-inter font-medium hover:bg-coffee-800 transition-all duration-200 hover:scale-105 shadow-lg'
               >
                 <ArrowLeft className='h-5 w-5' />

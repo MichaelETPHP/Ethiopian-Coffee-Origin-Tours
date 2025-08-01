@@ -6,12 +6,10 @@ import {
   Coffee,
   Camera,
   Utensils,
-  ArrowRight,
   ChevronDown,
   ChevronUp,
   Plane,
   Clock,
-  Star,
 } from 'lucide-react'
 import { getTourPackage } from '../data/tourData'
 import type { TourPackage } from '../data/tourData'
@@ -222,7 +220,7 @@ const SampleItinerary: React.FC<SampleItineraryProps> = ({ tourId }) => {
 
         {/* Itinerary Days - Mobile Optimized */}
         <div className='space-y-4 sm:space-y-6'>
-          {tourData.itinerary.map((day, index) => (
+          {tourData.itinerary.map((day) => (
             <div
               key={day.day}
               id={`day-${day.day}`}

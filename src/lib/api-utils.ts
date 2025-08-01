@@ -50,7 +50,9 @@ export async function apiRequest(
 }
 
 // Submit booking with proper error handling
-export async function submitBooking(bookingData: any): Promise<any> {
+export async function submitBooking(
+  bookingData: Record<string, unknown>
+): Promise<Record<string, unknown>> {
   try {
     const response = await apiRequest('/sheets-booking', {
       method: 'POST',
