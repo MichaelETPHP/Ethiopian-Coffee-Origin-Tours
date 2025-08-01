@@ -31,7 +31,7 @@
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1",
     "google-auth-library": "^10.2.0",
-    "googleapis": "^154.1.0",
+    "googleapis": "^118.0.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.344.0",

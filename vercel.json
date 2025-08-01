@@ -8,5 +8,10 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/sheets-booking.js": {
+      "maxDuration": 30
+    }
+  }
 }
