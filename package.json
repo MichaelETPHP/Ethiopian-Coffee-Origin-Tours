@@ -17,7 +17,11 @@
     "check:api": "node check-api.js",
     "setup:vercel": "node setup-vercel-env.js",
     "test:api-syntax": "node test-api-syntax.js",
-    "test:bookings": "node test-booking-submission.js"
+    "test:bookings": "node test-booking-submission.js",
+     "dev": "next dev",
+    "build": "next build", 
+    "start": "next start",
+    "api": "next dev"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.1",
@@ -35,6 +39,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.344.0",
+    "next": "^15.4.5",
     "node-fetch": "^2.7.0",
     "nodemailer": "^6.10.1",
     "pg": "^8.11.3",
