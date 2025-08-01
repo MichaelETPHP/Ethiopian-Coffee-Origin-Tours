@@ -16,7 +16,8 @@
     "debug:auth": "node debug-auth.js",
     "check:api": "node check-api.js",
     "setup:vercel": "node setup-vercel-env.js",
-    "test:api-syntax": "node test-api-syntax.js"
+    "test:api-syntax": "node test-api-syntax.js",
+    "test:bookings": "node test-booking-submission.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.1",
