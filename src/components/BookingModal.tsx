@@ -10,6 +10,7 @@ import {
   Check,
   Globe,
 } from 'lucide-react'
+import { submitBooking } from '../lib/api-utils'
 
 interface BookingModalProps {
   isOpen: boolean
@@ -323,55 +324,26 @@ const BookingModal: React.FC<BookingModalProps> = ({
     setError('')
 
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
+      const data = await submitBooking(formData)
 
-      let data = null
-      try {
-        data = await response.json()
-      } catch (jsonError) {
-        console.error('Failed to parse JSON response:', jsonError)
-        setError('Server returned an invalid response. Please try again.')
-        setIsSubmitting(false)
-        return
-      }
-
-      if (response.ok) {
-        setIsSubmitted(true)
-        setIsSubmitting(false) // Stop spinning immediately on success
-        // Auto-close modal after 4 seconds
-        setTimeout(() => {
-          onClose()
-        }, 4000)
-      } else {
-        if (response.status === 409) {
-          setError(
-            'A booking with this email already exists for the selected package.'
-          )
-        } else if (data?.errors && data.errors.length > 0) {
-          setError(
-            data.errors[0].msg || 'Please check your input and try again.'
-          )
-        } else {
-          setError(
-            data?.error ||
-              `Server error (${response.status}). Please try again.`
-          )
-        }
-      }
-    } catch (error) {
+      setIsSubmitted(true)
+      setIsSubmitting(false) // Stop spinning immediately on success
+      // Auto-close modal after 4 seconds
+      setTimeout(() => {
+        onClose()
+      }, 4000)
+    } catch (error: any) {
       console.error('Booking submission error:', error)
-      if (error instanceof TypeError && error.message.includes('fetch')) {
+      if (error.message.includes('409')) {
+        setError(
+          'A booking with this email already exists for the selected package.'
+        )
+      } else if (error.message.includes('fetch')) {
         setError(
           'Cannot connect to server. Please check if the backend is running.'
         )
       } else {
-        setError('Network error. Please check your connection and try again.')
+        setError(error.message || 'Network error. Please check your connection and try again.')
       }
     } finally {
       setIsSubmitting(false)

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
+    "server": "node server/index.js",
     "build": "npm run build:admin && npx vite build",
     "build:admin": "node -e \"const fs=require('fs');const path=require('path');if(!fs.existsSync('dist'))fs.mkdirSync('dist');fs.cpSync('public/admin','dist/admin',{recursive:true});\"",
     "lint": "eslint .",

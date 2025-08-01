@@ -13,14 +13,14 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
 
-// Import Google Sheets service
+// Import Google Sheets service (use development version in dev mode)
 import {
   createBooking,
   getBookings,
   updateBooking,
   deleteBooking,
   checkDuplicateBooking,
-} from '../lib/sheets.js'
+} from process.env.NODE_ENV === 'development' ? '../lib/sheets-dev.js' : '../lib/sheets.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

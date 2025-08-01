@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
+import { submitBooking } from '../lib/api-utils'
 
 interface FormData {
   fullName: string
@@ -373,45 +374,32 @@ const BookingPage: React.FC = () => {
     setError('')
 
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
+      const data = await submitBooking(formData)
 
-      const data = await response.json()
+      setIsSubmitting(false) // Stop spinning immediately on success
+      setShowSuccessAnimation(true) // Show success animation
 
-      if (response.ok) {
-        setIsSubmitting(false) // Stop spinning immediately on success
-        setShowSuccessAnimation(true) // Show success animation
-
-        // After success animation, show full success page
+      // After success animation, show full success page
+      setTimeout(() => {
+        setIsSubmitted(true)
+        setShowSuccessAnimation(false)
+        // Auto-redirect after 5 seconds
         setTimeout(() => {
-          setIsSubmitted(true)
-          setShowSuccessAnimation(false)
-          // Auto-redirect after 5 seconds
-          setTimeout(() => {
-            navigate('/')
-          }, 5000)
-        }, 2000) // Show animation for 2 seconds
-      } else {
-        if (response.status === 409) {
-          setError(
-            'A booking with this email already exists for the selected package.'
-          )
-        } else if (data.errors && data.errors.length > 0) {
-          setError(
-            data.errors[0].msg || 'Please check your input and try again.'
-          )
-        } else {
-          setError(data.error || 'Failed to submit booking. Please try again.')
-        }
-      }
-    } catch (error) {
+          navigate('/')
+        }, 5000)
+      }, 2000) // Show animation for 2 seconds
+    } catch (error: any) {
       console.error('Booking submission error:', error)
-      setError('Network error. Please check your connection and try again.')
+      if (error.message.includes('409')) {
+        setError(
+          'A booking with this email already exists for the selected package.'
+        )
+      } else {
+        setError(
+          error.message ||
+            'Network error. Please check your connection and try again.'
+        )
+      }
     } finally {
       setIsSubmitting(false)
     }

@@ -2,9 +2,9 @@
 
 // Get the base API URL for the current environment
 export function getApiBaseUrl(): string {
-  // In development, use relative URL (will be proxied by Vite)
+  // In development, use the Express server URL
   if (process.env.NODE_ENV === 'development') {
-    return '/api'
+    return 'http://localhost:3002/api'
   }
 
   // In production (Vercel), use relative URL (will be handled by Vercel)

@@ -1,5 +1,5 @@
 // api/bookings.js - Vercel serverless function for booking submissions
-import { createBooking, checkDuplicateBooking } from '../lib/sheets.js'
+import { createBooking, checkDuplicateBooking } from process.env.NODE_ENV === 'development' ? '../lib/sheets-dev.js' : '../lib/sheets.js'
 
 export default async function handler(req, res) {
   // Set CORS headers
