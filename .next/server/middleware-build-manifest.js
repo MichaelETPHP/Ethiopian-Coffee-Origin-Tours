@@ -29,11 +29,6 @@ globalThis.__BUILD_MANIFEST = {
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/booking.js"
-    ],
-    "/itinerary/[tourId]": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/itinerary/[tourId].js"
     ]
   },
   "ampFirstPages": []
