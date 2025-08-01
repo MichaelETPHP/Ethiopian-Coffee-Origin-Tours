@@ -2,11 +2,9 @@
   "name": "ethiopian-coffee-tours",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
-
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build", 
     "start": "next start",
     "lint": "next lint"
   },
