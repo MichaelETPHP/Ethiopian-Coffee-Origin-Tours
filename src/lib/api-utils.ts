@@ -2,12 +2,8 @@
 
 // Get the base API URL for the current environment
 export function getApiBaseUrl(): string {
-  // In development, use the Express server URL
-  if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:3002/api'
-  }
-
-  // In production (Vercel), use relative URL (will be handled by Vercel)
+  // In development, use the proxy (which forwards to localhost:3000)
+  // In production, use relative URL for Vercel serverless functions
   return '/api'
 }
 
@@ -41,6 +37,14 @@ export async function apiRequest(
     }
   } catch (error) {
     console.error('API request failed:', error)
+
+    // In development, provide a more helpful error message
+    if (process.env.NODE_ENV === 'development') {
+      throw new Error(
+        `API request failed. Make sure the development server is running. Error: ${error.message}`
+      )
+    }
+
     throw error
   }
 }
@@ -48,7 +52,7 @@ export async function apiRequest(
 // Submit booking with proper error handling
 export async function submitBooking(bookingData: any): Promise<any> {
   try {
-    const response = await apiRequest('/bookings', {
+    const response = await apiRequest('/sheets-booking', {
       method: 'POST',
       body: JSON.stringify(bookingData),
     })

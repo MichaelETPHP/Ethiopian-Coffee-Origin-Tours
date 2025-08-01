@@ -1,178 +1,155 @@
-# Google Sheets Setup Guide
+# Google Sheets Integration Setup
 
-This guide will help you set up Google Sheets as the database for the Ethiopian Coffee Tours booking system.
+This guide explains how to set up Google Sheets integration for the Ethiopian Coffee Tours booking system.
 
 ## Prerequisites
 
-1. A Google account
-2. Access to Google Cloud Console
-3. Node.js and npm installed
+1. Google Cloud Console account
+2. Google Sheets API enabled
+3. Service account with proper permissions
 
-## Step 1: Create a Google Cloud Project
+## Setup Steps
+
+### 1. Google Cloud Console Setup
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
+2. Create a new project or select existing project
 3. Enable the Google Sheets API:
    - Go to "APIs & Services" > "Library"
    - Search for "Google Sheets API"
-   - Click on it and press "Enable"
+   - Click "Enable"
 
-## Step 2: Create a Service Account
+### 2. Create Service Account
 
-1. In Google Cloud Console, go to "APIs & Services" > "Credentials"
+1. Go to "APIs & Services" > "Credentials"
 2. Click "Create Credentials" > "Service Account"
 3. Fill in the service account details:
-   - Name: `ethiopian-coffee-tours`
-   - Description: `Service account for booking system`
+   - Name: `sheet-access`
+   - Description: `Service account for Google Sheets integration`
 4. Click "Create and Continue"
-5. Skip the optional steps and click "Done"
+5. Skip role assignment (we'll handle permissions in Google Sheets)
+6. Click "Done"
 
-## Step 3: Generate Service Account Key
+### 3. Generate Service Account Key
 
-1. In the Credentials page, find your service account
-2. Click on the service account email
-3. Go to the "Keys" tab
-4. Click "Add Key" > "Create New Key"
-5. Choose "JSON" format
-6. Download the JSON file
+1. Click on the created service account
+2. Go to "Keys" tab
+3. Click "Add Key" > "Create new key"
+4. Choose "JSON" format
+5. Download the JSON file
+6. Rename it to `my-sheets-app-467604-764e3b37e3b1.json`
+7. Place it in the project root directory
 
-## Step 4: Create a Google Spreadsheet
+### 4. Google Sheets Setup
 
-1. Go to [Google Sheets](https://sheets.google.com/)
-2. Create a new spreadsheet
-3. Name it "Ethiopian Coffee Tours Bookings"
-4. Copy the spreadsheet ID from the URL:
-   - The URL will look like: `https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
-   - Copy the `SPREADSHEET_ID` part
+1. Create a new Google Sheets document
+2. Note the Spreadsheet ID from the URL:
 
-## Step 5: Share the Spreadsheet
+   - URL format: `https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
+   - Current ID: `1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA`
 
-1. In your Google Spreadsheet, click "Share"
-2. Add your service account email (from the JSON file) with "Editor" permissions
-3. Make sure to uncheck "Notify people" to avoid sending an email
+3. Share the spreadsheet with the service account:
+   - Click "Share" button
+   - Add email: `sheet-access@my-sheets-app-467604.iam.gserviceaccount.com`
+   - Give "Editor" permissions
+   - Uncheck "Notify people"
+   - Click "Share"
 
-## Step 6: Configure the Application
+### 5. Configure the Application
 
-1. **Place the JSON credentials file** in the `config/` folder:
-   ```
-   config/my-sheets-app-467604-93cad7db97fd.json
-   ```
+The application is already configured with:
 
-2. **Copy `sheets.env.example` to `.env`** and configure email settings:
-   ```env
-   # Email Configuration
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=587
-   SMTP_USER=your_email@gmail.com
-   SMTP_PASS=your_app_password
-   ADMIN_EMAIL=admin@yourdomain.com
+- Spreadsheet ID: `1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA`
+- Range: `Sheet1!A:Z`
+- Service account credentials: `my-sheets-app-467604-764e3b37e3b1.json`
 
-   # JWT secret for admin authentication
-   JWT_SECRET=your_jwt_secret_here
-   ```
+## Testing the Integration
 
-3. **The spreadsheet ID is already configured** in the code to use your specific spreadsheet.
+### Step 1: Verify Credentials
 
-## Step 7: Initialize the Spreadsheet
-
-Run the setup script to initialize the spreadsheet with headers:
+First, verify that your credentials file is valid:
 
 ```bash
-node setup-sheets.js
+npm run verify:credentials
 ```
 
-This will create headers in your spreadsheet with the following columns:
+This will check:
 
-- ID
-- Name
-- Email
-- Phone
-- Age
-- Group Size
-- Selected Tour Package
-- Status
-- Created At
-- Updated At
+- File exists in the correct location
+- JSON format is valid
+- All required fields are present
+- Private key format is correct
 
-## Step 8: Test the Integration
+### Step 2: Test Google Sheets Integration
 
-1. Start your development server:
+```bash
+npm run test:sheets
+```
 
-   ```bash
-   npm run dev
-   ```
+This will:
 
-2. Create a test booking through the website
-3. Check your Google Spreadsheet to see if the booking was added
+1. Test authentication
+2. Verify spreadsheet access
+3. Write a test entry to the spreadsheet
+
+### Expected Output
+
+```
+🔐 Testing Google Sheets authentication...
+✅ Authentication successful
+✅ Spreadsheet access confirmed: 1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA
+✅ Data written successfully to Google Sheets
+🎉 Google Sheets integration is working!
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"Invalid private key" error**
+1. **Authentication Failed**
 
-   - Make sure the private key is properly formatted with `\n` characters
-   - The key should be wrapped in quotes
+   - Verify the service account JSON file is in the project root
+   - Check that the file name matches the code
+   - Ensure the JSON file is valid
 
-2. **"Spreadsheet not found" error**
+2. **Spreadsheet Access Denied**
 
-   - Check that the spreadsheet ID is correct
-   - Ensure the service account has access to the spreadsheet
+   - Make sure the spreadsheet is shared with the service account email
+   - Verify the service account has "Editor" permissions
+   - Check that the Spreadsheet ID is correct
 
-3. **"Permission denied" error**
-   - Make sure the service account email has "Editor" permissions on the spreadsheet
-   - Check that the Google Sheets API is enabled
+3. **API Not Enabled**
+   - Go to Google Cloud Console
+   - Enable the Google Sheets API
+   - Wait a few minutes for changes to propagate
 
-### Getting the Private Key
+### Error Logs
 
-The private key in the JSON file looks like this:
+The application logs errors to:
 
-```json
-{
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n"
-}
-```
+- `bookings.log` - Failed booking attempts
+- `errors.log` - Server errors
 
-Copy the entire `private_key` value (including the `\n` characters) to your `.env` file.
+## Data Format
 
-## Security Notes
+Bookings are stored in Google Sheets with the following columns:
 
-1. Never commit your `.env` file to version control
-2. Keep your service account key secure
-3. Consider using environment variables in production
-4. Regularly rotate your service account keys
+| Column | Data             |
+| ------ | ---------------- |
+| A      | Timestamp        |
+| B      | Full Name        |
+| C      | Email            |
+| D      | Phone            |
+| E      | Age              |
+| F      | Country          |
+| G      | Booking Type     |
+| H      | Number of People |
+| I      | Selected Package |
+| J      | Source           |
 
-## Production Deployment
+## Development vs Production
 
-For production deployment (e.g., Vercel):
+- **Development**: Uses local server with Google Sheets integration
+- **Production**: Uses Vercel serverless functions with Google Sheets integration
 
-1. Add the environment variables to your hosting platform
-2. Make sure the service account has access to the production spreadsheet
-3. Test the booking system thoroughly before going live
-
-## Benefits of Using Google Sheets
-
-1. **No Database Setup**: No need to set up and maintain a database
-2. **Easy Access**: View and edit bookings directly in Google Sheets
-3. **Backup**: Google Sheets automatically backs up your data
-4. **Collaboration**: Multiple people can view and manage bookings
-5. **Export**: Easy to export data to CSV or other formats
-6. **Real-time**: Changes are reflected immediately
-
-## Migration from Database
-
-If you're migrating from a database system:
-
-1. Export your existing bookings to CSV
-2. Import the CSV into your Google Spreadsheet
-3. Make sure the column headers match the expected format
-4. Test the system with the imported data
-
-## Support
-
-If you encounter issues:
-
-1. Check the console logs for error messages
-2. Verify all environment variables are set correctly
-3. Ensure the Google Sheets API is enabled
-4. Confirm the service account has proper permissions
+Both environments use the same Google Sheets setup.
