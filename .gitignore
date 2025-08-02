@@ -3,6 +3,10 @@ node_modules/
 /.pnp
 .pnp.js
 
+# Add these lines to .gitignore
+my-sheets-app-467604-764e3b37e3b1.json
+
+
 # Next.js Build Output
 .next/
 out/
