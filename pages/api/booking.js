@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   try {
     console.log('=== Booking API Called ===')
     console.log('Body:', req.body)
-    console.log('Headers:', req.headers)
+    console.log('Environment:', process.env.NODE_ENV)
 
     const { fullName, email, phone, selectedPackage, numberOfPeople } = req.body
 
@@ -50,23 +50,29 @@ export default async function handler(req, res) {
     // Google Sheets Integration
     let sheetsResponse = null
     try {
-      // Load credentials from environment variable or file
       console.log('=== Loading Google Sheets Credentials ===')
 
       let credentials
 
       // Load credentials based on environment
-      if (
-        process.env.NODE_ENV === 'production' &&
-        process.env.GOOGLE_SHEETS_CREDENTIALS
-      ) {
-        // Production: Use environment variable from Vercel
-        console.log(
-          'Loading credentials from environment variable (production)'
-        )
+      if (process.env.GOOGLE_SHEETS_CREDENTIALS) {
+        // Environment variable exists (production or local with env)
+        console.log('Loading credentials from environment variable')
         credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS)
+
+        // FIX: Convert \\n to actual newlines for production
+        if (
+          credentials.private_key &&
+          credentials.private_key.includes('\\n')
+        ) {
+          console.log('Converting escaped newlines to actual newlines')
+          credentials.private_key = credentials.private_key.replace(
+            /\\n/g,
+            '\n'
+          )
+        }
       } else {
-        // Development: Use local JSON file
+        // Fallback to local file (development only)
         console.log('Loading credentials from file (development)')
         const fs = require('fs')
         const path = require('path')
@@ -83,26 +89,30 @@ export default async function handler(req, res) {
       console.log('Private key length:', credentials.private_key.length)
       console.log(
         'Private key starts with:',
-        credentials.private_key.substring(0, 50)
+        credentials.private_key.substring(0, 30)
+      )
+      console.log(
+        'Private key has proper newlines:',
+        credentials.private_key.includes('\n')
       )
 
       if (!credentials.client_email || !credentials.private_key) {
-        console.log(
-          'Google Sheets credentials not available, skipping sheets integration'
-        )
-        throw new Error('Google Sheets credentials not configured')
+        throw new Error('Google Sheets credentials not configured properly')
       }
 
-      // Create JWT client
+      // Create JWT client with proper private key formatting
+      console.log('Creating JWT client...')
       const auth = new google.auth.JWT(
         credentials.client_email,
         null,
-        credentials.private_key,
+        credentials.private_key, // Should now have proper \n characters
         ['https://www.googleapis.com/auth/spreadsheets']
       )
 
       // Authorize the client
+      console.log('Authorizing JWT client...')
       await auth.authorize()
+      console.log('JWT authorization successful')
 
       // Create Google Sheets API client
       const sheets = google.sheets({ version: 'v4', auth })
@@ -115,13 +125,15 @@ export default async function handler(req, res) {
         phone,
         selectedPackage || 'Not specified',
         numberOfPeople || '1',
-        'New Booking',
+        process.env.NODE_ENV || 'unknown', // Track environment
+        'Confirmed',
       ]
 
+      console.log('Writing to Google Sheets...')
       // Append to Google Sheet
       const response = await sheets.spreadsheets.values.append({
         spreadsheetId: '1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA',
-        range: 'Sheet1!A:G',
+        range: 'Sheet1!A:H',
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         resource: {
@@ -130,10 +142,32 @@ export default async function handler(req, res) {
       })
 
       sheetsResponse = response.data
-      console.log('Google Sheets response:', sheetsResponse)
+      console.log('Google Sheets write successful:', sheetsResponse.updates)
     } catch (sheetsError) {
       console.error('Google Sheets error:', sheetsError.message)
-      console.error('Full error:', sheetsError)
+      console.error('Error details:', sheetsError)
+
+      // Additional debugging for JWT errors
+      if (
+        sheetsError.message.includes('invalid_grant') ||
+        sheetsError.message.includes('JWT')
+      ) {
+        console.error('JWT Signature Error - Check private key format!')
+        console.error(
+          'Environment variable exists:',
+          !!process.env.GOOGLE_SHEETS_CREDENTIALS
+        )
+        if (process.env.GOOGLE_SHEETS_CREDENTIALS) {
+          const testCreds = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS)
+          console.error(
+            'Private key preview:',
+            testCreds.private_key
+              ? testCreds.private_key.substring(0, 50)
+              : 'MISSING'
+          )
+        }
+      }
+
       // Continue without sheets integration
     }
 
@@ -164,6 +198,8 @@ export default async function handler(req, res) {
       meta: {
         apiVersion: '1.0.0',
         endpoint: '/api/booking',
+        environment: process.env.NODE_ENV,
+        sheetsEnabled: !!sheetsResponse,
       },
     }
 
