@@ -24,8 +24,8 @@ export interface TourPackage {
 }
 
 export const tourPackages: Record<string, TourPackage> = {
-  'southern-ethiopia': {
-    id: 'southern-ethiopia',
+  'Southern Ethiopian Coffee Origin Trip 2025': {
+    id: 'Southern Ethiopian Coffee Origin Trip 2025',
     name: 'Southern Ethiopian Coffee Origin Trip 2025',
     dates: 'November 26 – December 2, 2025',
     regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Addis Ababa'],
@@ -591,7 +591,7 @@ export const tourPackages: Record<string, TourPackage> = {
 
 export const getTourPackage = (tourId: string | undefined): TourPackage => {
   if (!tourId || !tourPackages[tourId]) {
-    return tourPackages['southern-ethiopia'] // Default fallback
+    return tourPackages['Southern Ethiopian Coffee Origin Trip 2025'] // Default fallback
   }
   return tourPackages[tourId]
 }

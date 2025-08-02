@@ -26,7 +26,7 @@ interface TourPackage {
 
 const tourPackages: TourPackage[] = [
   {
-    id: 'complete-ethiopia',
+    id: 'Complete Ethiopian Coffee Origin Trip 2025',
     name: 'Complete Ethiopian Coffee Origin Trip 2025',
     dates: 'November 26 – December 6, 2025',
     duration: '11 Days',
@@ -45,7 +45,7 @@ const tourPackages: TourPackage[] = [
     difficulty: 'Comprehensive',
   },
   {
-    id: 'southern-ethiopia',
+    id: 'Southern Ethiopian Coffee Origin Trip 2025',
     name: 'Southern Ethiopian Coffee Origin Trip 2025',
     dates: 'November 26 – December 2, 2025',
     duration: '7 Days',
@@ -64,7 +64,7 @@ const tourPackages: TourPackage[] = [
     difficulty: 'Moderate',
   },
   {
-    id: 'western-ethiopia',
+    id: 'Western Ethiopian Coffee Origin Trip 2025',
     name: 'Western Ethiopian Coffee Origin Trip 2025',
     dates: 'December 1 – December 6, 2025',
     duration: '6 Days',

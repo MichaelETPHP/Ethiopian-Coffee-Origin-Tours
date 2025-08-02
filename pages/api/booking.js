@@ -1,4 +1,4 @@
-// pages/api/booking.js - Next.js API Route with Clickable Email & Phone Links
+// pages/api/booking.js - Next.js API Route with Clickable Email & Phone Links + Country Column
 import { google } from 'googleapis'
 
 export default async function handler(req, res) {
@@ -26,7 +26,8 @@ export default async function handler(req, res) {
     console.log('Body:', req.body)
     console.log('Environment:', process.env.NODE_ENV)
 
-    const { fullName, email, phone, selectedPackage, numberOfPeople } = req.body
+    const { fullName, email, phone, selectedPackage, numberOfPeople, country } =
+      req.body
 
     // Basic validation
     if (!fullName || !email || !phone) {
@@ -126,11 +127,12 @@ export default async function handler(req, res) {
         email, // C: Email (will be clickable)
         phone, // D: Phone (will be clickable)
         req.body.age || 'Not specified', // E: Age
-        numberOfPeople || '1', // F: Group size
-        selectedPackage || 'Not specified', // G: Selected Tours (will be bold)
-        'Pending', // H: Status (will have dropdown)
-        humanReadableDate, // I: Created at
-        humanReadableDate, // J: Updated at
+        country || 'Not specified', // F: Country (NEW - will be bold)
+        numberOfPeople || '1', // G: Group size
+        selectedPackage || 'Not specified', // H: Selected Tours (will be bold)
+        'Pending', // I: Status (will have dropdown)
+        humanReadableDate, // J: Created at
+        humanReadableDate, // K: Updated at
       ]
 
       console.log('Writing to Google Sheets...')
@@ -138,7 +140,7 @@ export default async function handler(req, res) {
       // Step 1: Append the data
       const appendResponse = await sheets.spreadsheets.values.append({
         spreadsheetId: spreadsheetId,
-        range: 'Sheet1!A:J',
+        range: 'Sheet1!A:K', // Updated range to include K column
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         resource: {
@@ -153,7 +155,7 @@ export default async function handler(req, res) {
       const rowNumber = parseInt(updatedRange.match(/(\d+)$/)[0])
       console.log('Added to row number:', rowNumber)
 
-      // Step 3: Add clickable links for email and phone
+      // Step 3: Add clickable links for email and phone + formatting
       const linkRequest = {
         spreadsheetId: spreadsheetId,
         resource: {
@@ -216,15 +218,77 @@ export default async function handler(req, res) {
                 fields: 'userEnteredValue,userEnteredFormat.textFormat',
               },
             },
-            // Add dropdown validation for Status column (H)
+            // Bold the Country column (F) - NEW
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: rowNumber - 1,
+                  endRowIndex: rowNumber,
+                  startColumnIndex: 5, // Column F (Country)
+                  endColumnIndex: 6,
+                },
+                cell: {
+                  userEnteredFormat: {
+                    textFormat: {
+                      bold: true,
+                      foregroundColor: {
+                        red: 0.6,
+                        green: 0.0,
+                        blue: 0.6, // Purple color for country
+                      },
+                    },
+                    backgroundColor: {
+                      red: 0.98,
+                      green: 0.9,
+                      blue: 1.0, // Light purple background
+                    },
+                    horizontalAlignment: 'CENTER',
+                  },
+                },
+                fields:
+                  'userEnteredFormat(textFormat,backgroundColor,horizontalAlignment)',
+              },
+            },
+            // Bold the Selected Tours column (H) - Updated column index
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: rowNumber - 1,
+                  endRowIndex: rowNumber,
+                  startColumnIndex: 7, // Column H (Selected Tours) - Updated from 6 to 7
+                  endColumnIndex: 8,
+                },
+                cell: {
+                  userEnteredFormat: {
+                    textFormat: {
+                      bold: true,
+                      foregroundColor: {
+                        red: 0.0,
+                        green: 0.4,
+                        blue: 0.8, // Blue color for tour package
+                      },
+                    },
+                    backgroundColor: {
+                      red: 0.9,
+                      green: 0.95,
+                      blue: 1.0, // Light blue background
+                    },
+                  },
+                },
+                fields: 'userEnteredFormat(textFormat,backgroundColor)',
+              },
+            },
+            // Add dropdown validation for Status column (I) - Updated column index
             {
               setDataValidation: {
                 range: {
                   sheetId: 0,
                   startRowIndex: rowNumber - 1,
                   endRowIndex: rowNumber,
-                  startColumnIndex: 7, // Column H (Status)
-                  endColumnIndex: 8,
+                  startColumnIndex: 8, // Column I (Status) - Updated from 7 to 8
+                  endColumnIndex: 9,
                 },
                 rule: {
                   condition: {
@@ -242,15 +306,15 @@ export default async function handler(req, res) {
                 },
               },
             },
-            // Format Status column with conditional colors
+            // Format Status column with conditional colors (I) - Updated column index
             {
               repeatCell: {
                 range: {
                   sheetId: 0,
                   startRowIndex: rowNumber - 1,
                   endRowIndex: rowNumber,
-                  startColumnIndex: 7, // Column H (Status)
-                  endColumnIndex: 8,
+                  startColumnIndex: 8, // Column I (Status) - Updated from 7 to 8
+                  endColumnIndex: 9,
                 },
                 cell: {
                   userEnteredFormat: {
@@ -274,37 +338,7 @@ export default async function handler(req, res) {
                   'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)',
               },
             },
-            // Bold the Selected Tours column (G)
-            {
-              repeatCell: {
-                range: {
-                  sheetId: 0,
-                  startRowIndex: rowNumber - 1,
-                  endRowIndex: rowNumber,
-                  startColumnIndex: 6, // Column G (Selected Tours)
-                  endColumnIndex: 7,
-                },
-                cell: {
-                  userEnteredFormat: {
-                    textFormat: {
-                      bold: true,
-                      foregroundColor: {
-                        red: 0.0,
-                        green: 0.4,
-                        blue: 0.8, // Blue color for tour package
-                      },
-                    },
-                    backgroundColor: {
-                      red: 0.9,
-                      green: 0.95,
-                      blue: 1.0, // Light blue background
-                    },
-                  },
-                },
-                fields: 'userEnteredFormat(textFormat,backgroundColor)',
-              },
-            },
-            // Format the entire row with borders
+            // Format the entire row with borders - Updated range
             {
               updateBorders: {
                 range: {
@@ -312,7 +346,7 @@ export default async function handler(req, res) {
                   startRowIndex: rowNumber - 1,
                   endRowIndex: rowNumber,
                   startColumnIndex: 0,
-                  endColumnIndex: 10,
+                  endColumnIndex: 11, // Updated from 10 to 11 for new column
                 },
                 top: {
                   style: 'SOLID',
@@ -344,7 +378,7 @@ export default async function handler(req, res) {
       await sheets.spreadsheets.batchUpdate(linkRequest)
       console.log('Links and formatting applied successfully')
 
-      // Step 4: Add conditional formatting rules for different statuses
+      // Step 4: Add conditional formatting rules for different statuses - Updated column indices
       const conditionalFormatRequest = {
         spreadsheetId: spreadsheetId,
         resource: {
@@ -354,7 +388,7 @@ export default async function handler(req, res) {
               addConditionalFormatRule: {
                 rule: {
                   ranges: [
-                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
                   ],
                   booleanRule: {
                     condition: {
@@ -378,7 +412,7 @@ export default async function handler(req, res) {
               addConditionalFormatRule: {
                 rule: {
                   ranges: [
-                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
                   ],
                   booleanRule: {
                     condition: {
@@ -402,7 +436,7 @@ export default async function handler(req, res) {
               addConditionalFormatRule: {
                 rule: {
                   ranges: [
-                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
                   ],
                   booleanRule: {
                     condition: {
@@ -426,7 +460,7 @@ export default async function handler(req, res) {
               addConditionalFormatRule: {
                 rule: {
                   ranges: [
-                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
                   ],
                   booleanRule: {
                     condition: {
@@ -450,7 +484,7 @@ export default async function handler(req, res) {
               addConditionalFormatRule: {
                 rule: {
                   ranges: [
-                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
                   ],
                   booleanRule: {
                     condition: {
@@ -484,7 +518,7 @@ export default async function handler(req, res) {
       sheetsResponse = {
         ...appendResponse.data,
         formatting:
-          'Applied clickable links, dropdown, colors, and bold formatting',
+          'Applied clickable links, dropdown, colors, country column, and bold formatting',
         rowNumber: rowNumber,
         emailLink: `mailto:${email}`,
         phoneLink: `tel:${cleanPhone}`,
@@ -507,13 +541,14 @@ export default async function handler(req, res) {
           email,
           phone,
           age: req.body.age || 'Not specified',
+          country: country || 'Not specified', // Added country to response
           selectedPackage,
           numberOfPeople: numberOfPeople || '1',
         },
         timestamp: new Date().toISOString(),
         status: 'Pending',
         sheetsResponse: sheetsResponse
-          ? 'Data saved with clickable email/phone links and formatting'
+          ? 'Data saved with clickable email/phone links, country column, and formatting'
           : 'Local booking only',
       },
       meta: {

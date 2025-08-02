@@ -233,7 +233,7 @@ const countries = [
 
 const packages = [
   {
-    id: 'complete-ethiopia',
+    id: 'Complete Ethiopian Coffee Origin Trip 2025',
     name: 'Complete Ethiopian Coffee Origin Trip 2025',
     dates: 'November 26 – December 6, 2025',
     regions: [
@@ -251,7 +251,7 @@ const packages = [
       'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
   },
   {
-    id: 'southern-ethiopia',
+    id: 'Southern Ethiopian Coffee Origin Trip 2025',
     name: 'Southern Ethiopian Coffee Origin Trip 2025',
     dates: 'November 26 – December 2, 2025',
     regions: ['Sidama', 'Yirgacheffe', 'Guji', 'Addis Ababa'],
@@ -261,7 +261,7 @@ const packages = [
       'All local travel (including flights within Ethiopia), meals and drinks, lodging, marketing support: professional content creation to enhance your coffee storytelling',
   },
   {
-    id: 'western-ethiopia',
+    id: 'Western Ethiopian Coffee Origin Trip 2025',
     name: 'Western Ethiopian Coffee Origin Trip 2025',
     dates: 'December 1 – December 6, 2025',
     regions: ['Jimma', 'Kaffa', 'Limu', 'Addis Ababa'],
