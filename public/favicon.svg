@@ -1,12 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <!-- Coffee bean dot -->
-  <circle cx="16" cy="16" r="12" fill="#8B4513" stroke="#654321" stroke-width="1"/>
+  <!-- Coffee bean shape -->
+  <ellipse cx="16" cy="16" rx="14" ry="10" fill="#8B4513" stroke="#654321" stroke-width="1"/>
   
-  <!-- Inner highlight -->
-  <circle cx="14" cy="14" r="4" fill="#A0522D" opacity="0.7"/>
+  <!-- Coffee bean center line -->
+  <path d="M8 16 Q16 8 24 16 Q16 24 8 16" fill="#A0522D" opacity="0.8"/>
   
-  <!-- Coffee steam lines -->
-  <path d="M16 4 Q18 2 20 4" stroke="#8B4513" stroke-width="1.5" fill="none" opacity="0.6"/>
-  <path d="M16 4 Q14 2 12 4" stroke="#8B4513" stroke-width="1.5" fill="none" opacity="0.6"/>
-  <path d="M16 4 Q18 1 20 3" stroke="#8B4513" stroke-width="1" fill="none" opacity="0.4"/>
+  <!-- Coffee bean highlights -->
+  <ellipse cx="14" cy="14" rx="3" ry="2" fill="#D2691E" opacity="0.6"/>
+  <ellipse cx="18" cy="18" rx="2" ry="1.5" fill="#D2691E" opacity="0.4"/>
+  
+  <!-- Coffee cup emoji -->
+  <text x="16" y="20" text-anchor="middle" font-size="12" fill="#8B4513" font-family="Arial, sans-serif">☕</text>
 </svg> 
