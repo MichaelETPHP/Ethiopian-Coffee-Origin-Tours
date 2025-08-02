@@ -118,22 +118,37 @@ export default async function handler(req, res) {
       const sheets = google.sheets({ version: 'v4', auth })
 
       // Prepare data for Google Sheets
+      const now = new Date()
+      const humanReadableDate = now.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      })
+
+      const bookingId = `T-2025-${Math.floor(Math.random() * 900) + 100}` // 3 digit random number
+
       const rowData = [
-        new Date().toISOString(), // Timestamp
-        fullName,
-        email,
-        phone,
-        selectedPackage || 'Not specified',
-        numberOfPeople || '1',
-        process.env.NODE_ENV || 'unknown', // Track environment
-        'Confirmed',
+        bookingId, // ID
+        fullName, // Name
+        email, // Email
+        phone, // Phone
+        req.body.age || 'Not specified', // Age
+        numberOfPeople || '1', // Group size
+        selectedPackage || 'Not specified', // Selected Tours
+        'Pending', // Status
+        humanReadableDate, // Created at
+        humanReadableDate, // Updated at (same as created for new booking)
       ]
 
       console.log('Writing to Google Sheets...')
       // Append to Google Sheet
       const response = await sheets.spreadsheets.values.append({
         spreadsheetId: '1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA',
-        range: 'Sheet1!A:H',
+        range: 'Sheet1!A:J', // Updated range for 10 columns
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         resource: {
@@ -171,26 +186,24 @@ export default async function handler(req, res) {
       // Continue without sheets integration
     }
 
-    // Success response
-    const bookingId = `TOUR-${Date.now()}-${Math.random()
-      .toString(36)
-      .substring(2, 8)
-      .toUpperCase()}`
+    // Success response - Use the same ID format as Google Sheets
+    const responseBookingId = `T-2025-${Math.floor(Math.random() * 900) + 100}`
 
     const response = {
       success: true,
       message: 'Booking received successfully!',
       data: {
-        bookingId,
+        bookingId: responseBookingId,
         customerInfo: {
           fullName,
           email,
           phone,
+          age: req.body.age || 'Not specified',
           selectedPackage,
           numberOfPeople: numberOfPeople || '1',
         },
         timestamp: new Date().toISOString(),
-        status: 'confirmed',
+        status: 'Pending',
         sheetsResponse: sheetsResponse
           ? 'Data saved to Google Sheets'
           : 'Local booking only',
