@@ -55,16 +55,28 @@ export default async function handler(req, res) {
 
       let credentials
 
-      // Load credentials from file (works for both development and production)
-      console.log('Credentials loaded from file successfully')
-      const fs = require('fs')
-      const path = require('path')
-      credentials = JSON.parse(
-        fs.readFileSync(
-          path.join(process.cwd(), 'my-sheets-app-467604-764e3b37e3b1.json'),
-          'utf8'
+      // Load credentials based on environment
+      if (
+        process.env.NODE_ENV === 'production' &&
+        process.env.GOOGLE_SHEETS_CREDENTIALS
+      ) {
+        // Production: Use environment variable from Vercel
+        console.log(
+          'Loading credentials from environment variable (production)'
         )
-      )
+        credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS)
+      } else {
+        // Development: Use local JSON file
+        console.log('Loading credentials from file (development)')
+        const fs = require('fs')
+        const path = require('path')
+        credentials = JSON.parse(
+          fs.readFileSync(
+            path.join(process.cwd(), 'my-sheets-app-467604-764e3b37e3b1.json'),
+            'utf8'
+          )
+        )
+      }
 
       console.log('Credentials loaded successfully')
       console.log('Client email:', credentials.client_email)
