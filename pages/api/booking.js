@@ -1,4 +1,4 @@
-// pages/api/booking.js - Next.js API Route with Google Sheets Integration and Colors
+// pages/api/booking.js - Next.js API Route with Clickable Email & Phone Links
 import { google } from 'googleapis'
 
 export default async function handler(req, res) {
@@ -56,11 +56,9 @@ export default async function handler(req, res) {
 
       // Load credentials based on environment
       if (process.env.GOOGLE_SHEETS_CREDENTIALS) {
-        // Environment variable exists (production or local with env)
         console.log('Loading credentials from environment variable')
         credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS)
 
-        // FIX: Convert \\n to actual newlines for production
         if (
           credentials.private_key &&
           credentials.private_key.includes('\\n')
@@ -72,7 +70,6 @@ export default async function handler(req, res) {
           )
         }
       } else {
-        // Fallback to local file (development only)
         console.log('Loading credentials from file (development)')
         const fs = require('fs')
         const path = require('path')
@@ -85,37 +82,26 @@ export default async function handler(req, res) {
       }
 
       console.log('Credentials loaded successfully')
-      console.log('Client email:', credentials.client_email)
-      console.log('Private key length:', credentials.private_key.length)
-      console.log(
-        'Private key starts with:',
-        credentials.private_key.substring(0, 30)
-      )
-      console.log(
-        'Private key has proper newlines:',
-        credentials.private_key.includes('\n')
-      )
 
       if (!credentials.client_email || !credentials.private_key) {
         throw new Error('Google Sheets credentials not configured properly')
       }
 
-      // Create JWT client with proper private key formatting
+      // Create JWT client
       console.log('Creating JWT client...')
       const auth = new google.auth.JWT(
         credentials.client_email,
         null,
-        credentials.private_key, // Should now have proper \n characters
+        credentials.private_key,
         ['https://www.googleapis.com/auth/spreadsheets']
       )
 
-      // Authorize the client
       console.log('Authorizing JWT client...')
       await auth.authorize()
       console.log('JWT authorization successful')
 
-      // Create Google Sheets API client
       const sheets = google.sheets({ version: 'v4', auth })
+      const spreadsheetId = '1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA'
 
       // Prepare data for Google Sheets
       const now = new Date()
@@ -129,26 +115,29 @@ export default async function handler(req, res) {
         hour12: false,
       })
 
-      const bookingId = `T-2025-${Math.floor(Math.random() * 900) + 100}` // 3 digit random number
+      const bookingId = `T-2025-${Math.floor(Math.random() * 900) + 100}`
+
+      // Format phone number for better calling (remove spaces and special chars for tel: link)
+      const cleanPhone = phone.replace(/[\s\-\(\)]/g, '')
 
       const rowData = [
-        bookingId, // ID
-        fullName, // Name
-        email, // Email
-        phone, // Phone
-        req.body.age || 'Not specified', // Age
-        numberOfPeople || '1', // Group size
-        selectedPackage || 'Not specified', // Selected Tours
-        'Pending', // Status (Column H - this will be colored red)
-        humanReadableDate, // Created at
-        humanReadableDate, // Updated at (same as created for new booking)
+        bookingId, // A: ID
+        fullName, // B: Name
+        email, // C: Email (will be clickable)
+        phone, // D: Phone (will be clickable)
+        req.body.age || 'Not specified', // E: Age
+        numberOfPeople || '1', // F: Group size
+        selectedPackage || 'Not specified', // G: Selected Tours (will be bold)
+        'Pending', // H: Status (will have dropdown)
+        humanReadableDate, // I: Created at
+        humanReadableDate, // J: Updated at
       ]
 
       console.log('Writing to Google Sheets...')
 
-      // Step 1: Append the data to get the row number
+      // Step 1: Append the data
       const appendResponse = await sheets.spreadsheets.values.append({
-        spreadsheetId: '1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA',
+        spreadsheetId: spreadsheetId,
         range: 'Sheet1!A:J',
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
@@ -157,89 +146,355 @@ export default async function handler(req, res) {
         },
       })
 
-      console.log('Data written successfully:', appendResponse.data.updates)
+      console.log('Data written successfully')
 
       // Step 2: Get the row number that was just added
       const updatedRange = appendResponse.data.updates.updatedRange
-      const rowNumber = parseInt(updatedRange.match(/(\d+)$/)[0]) // Extract row number from range like "Sheet1!A2:J2"
-
+      const rowNumber = parseInt(updatedRange.match(/(\d+)$/)[0])
       console.log('Added to row number:', rowNumber)
 
-      // Step 3: Apply red background color to the Status column (Column H)
-      const colorRequest = {
-        spreadsheetId: '1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA',
+      // Step 3: Add clickable links for email and phone
+      const linkRequest = {
+        spreadsheetId: spreadsheetId,
         resource: {
           requests: [
+            // Make email clickable (Column C)
             {
               repeatCell: {
                 range: {
-                  sheetId: 0, // First sheet (Sheet1)
-                  startRowIndex: rowNumber - 1, // 0-indexed, so subtract 1
-                  endRowIndex: rowNumber, // End at the same row
-                  startColumnIndex: 7, // Column H (0-indexed, so H = 7)
-                  endColumnIndex: 8, // End at column H
+                  sheetId: 0,
+                  startRowIndex: rowNumber - 1,
+                  endRowIndex: rowNumber,
+                  startColumnIndex: 2, // Column C (Email)
+                  endColumnIndex: 3,
+                },
+                cell: {
+                  userEnteredValue: {
+                    formulaValue: `=HYPERLINK("mailto:${email}?subject=Ethiopian Coffee Tour Booking - ${bookingId}&body=Dear ${fullName},%0A%0AThank you for your booking inquiry.%0A%0ABest regards,%0AEthiopian Coffee Tours Team", "${email}")`,
+                  },
+                  userEnteredFormat: {
+                    textFormat: {
+                      foregroundColor: {
+                        red: 0.0,
+                        green: 0.0,
+                        blue: 0.8, // Blue color for email link
+                      },
+                      underline: true,
+                      bold: false,
+                    },
+                  },
+                },
+                fields: 'userEnteredValue,userEnteredFormat.textFormat',
+              },
+            },
+            // Make phone clickable (Column D)
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: rowNumber - 1,
+                  endRowIndex: rowNumber,
+                  startColumnIndex: 3, // Column D (Phone)
+                  endColumnIndex: 4,
+                },
+                cell: {
+                  userEnteredValue: {
+                    formulaValue: `=HYPERLINK("tel:${cleanPhone}", "${phone}")`,
+                  },
+                  userEnteredFormat: {
+                    textFormat: {
+                      foregroundColor: {
+                        red: 0.0,
+                        green: 0.6,
+                        blue: 0.0, // Green color for phone link
+                      },
+                      underline: true,
+                      bold: false,
+                    },
+                  },
+                },
+                fields: 'userEnteredValue,userEnteredFormat.textFormat',
+              },
+            },
+            // Add dropdown validation for Status column (H)
+            {
+              setDataValidation: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: rowNumber - 1,
+                  endRowIndex: rowNumber,
+                  startColumnIndex: 7, // Column H (Status)
+                  endColumnIndex: 8,
+                },
+                rule: {
+                  condition: {
+                    type: 'ONE_OF_LIST',
+                    values: [
+                      { userEnteredValue: 'Pending' },
+                      { userEnteredValue: 'Under Review' },
+                      { userEnteredValue: 'Confirmed' },
+                      { userEnteredValue: 'Completed' },
+                      { userEnteredValue: 'Cancelled' },
+                    ],
+                  },
+                  showCustomUi: true,
+                  strict: true,
+                },
+              },
+            },
+            // Format Status column with conditional colors
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: rowNumber - 1,
+                  endRowIndex: rowNumber,
+                  startColumnIndex: 7, // Column H (Status)
+                  endColumnIndex: 8,
                 },
                 cell: {
                   userEnteredFormat: {
                     backgroundColor: {
-                      red: 1.0, // Full red
-                      green: 0.8, // Light red background
-                      blue: 0.8, // Light red background
+                      red: 1.0, // Red background for Pending
+                      green: 0.8,
+                      blue: 0.8,
                     },
                     textFormat: {
                       foregroundColor: {
-                        red: 0.8, // Dark red text
+                        red: 0.8,
                         green: 0.0,
                         blue: 0.0,
                       },
                       bold: true,
                     },
+                    horizontalAlignment: 'CENTER',
                   },
                 },
-                fields: 'userEnteredFormat(backgroundColor,textFormat)',
+                fields:
+                  'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)',
+              },
+            },
+            // Bold the Selected Tours column (G)
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: rowNumber - 1,
+                  endRowIndex: rowNumber,
+                  startColumnIndex: 6, // Column G (Selected Tours)
+                  endColumnIndex: 7,
+                },
+                cell: {
+                  userEnteredFormat: {
+                    textFormat: {
+                      bold: true,
+                      foregroundColor: {
+                        red: 0.0,
+                        green: 0.4,
+                        blue: 0.8, // Blue color for tour package
+                      },
+                    },
+                    backgroundColor: {
+                      red: 0.9,
+                      green: 0.95,
+                      blue: 1.0, // Light blue background
+                    },
+                  },
+                },
+                fields: 'userEnteredFormat(textFormat,backgroundColor)',
+              },
+            },
+            // Format the entire row with borders
+            {
+              updateBorders: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: rowNumber - 1,
+                  endRowIndex: rowNumber,
+                  startColumnIndex: 0,
+                  endColumnIndex: 10,
+                },
+                top: {
+                  style: 'SOLID',
+                  width: 1,
+                  color: { red: 0.8, green: 0.8, blue: 0.8 },
+                },
+                bottom: {
+                  style: 'SOLID',
+                  width: 1,
+                  color: { red: 0.8, green: 0.8, blue: 0.8 },
+                },
+                left: {
+                  style: 'SOLID',
+                  width: 1,
+                  color: { red: 0.8, green: 0.8, blue: 0.8 },
+                },
+                right: {
+                  style: 'SOLID',
+                  width: 1,
+                  color: { red: 0.8, green: 0.8, blue: 0.8 },
+                },
               },
             },
           ],
         },
       }
 
-      console.log('Applying red color to Status column...')
-      const colorResponse = await sheets.spreadsheets.batchUpdate(colorRequest)
-      console.log('Color applied successfully')
+      console.log('Applying formatting, links, and dropdown validation...')
+      await sheets.spreadsheets.batchUpdate(linkRequest)
+      console.log('Links and formatting applied successfully')
+
+      // Step 4: Add conditional formatting rules for different statuses
+      const conditionalFormatRequest = {
+        spreadsheetId: spreadsheetId,
+        resource: {
+          requests: [
+            // Pending - Red
+            {
+              addConditionalFormatRule: {
+                rule: {
+                  ranges: [
+                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                  ],
+                  booleanRule: {
+                    condition: {
+                      type: 'TEXT_EQ',
+                      values: [{ userEnteredValue: 'Pending' }],
+                    },
+                    format: {
+                      backgroundColor: { red: 1.0, green: 0.8, blue: 0.8 },
+                      textFormat: {
+                        bold: true,
+                        foregroundColor: { red: 0.8, green: 0.0, blue: 0.0 },
+                      },
+                    },
+                  },
+                },
+                index: 0,
+              },
+            },
+            // Under Review - Orange
+            {
+              addConditionalFormatRule: {
+                rule: {
+                  ranges: [
+                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                  ],
+                  booleanRule: {
+                    condition: {
+                      type: 'TEXT_EQ',
+                      values: [{ userEnteredValue: 'Under Review' }],
+                    },
+                    format: {
+                      backgroundColor: { red: 1.0, green: 0.9, blue: 0.7 },
+                      textFormat: {
+                        bold: true,
+                        foregroundColor: { red: 0.8, green: 0.4, blue: 0.0 },
+                      },
+                    },
+                  },
+                },
+                index: 1,
+              },
+            },
+            // Confirmed - Light Green
+            {
+              addConditionalFormatRule: {
+                rule: {
+                  ranges: [
+                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                  ],
+                  booleanRule: {
+                    condition: {
+                      type: 'TEXT_EQ',
+                      values: [{ userEnteredValue: 'Confirmed' }],
+                    },
+                    format: {
+                      backgroundColor: { red: 0.8, green: 1.0, blue: 0.8 },
+                      textFormat: {
+                        bold: true,
+                        foregroundColor: { red: 0.0, green: 0.6, blue: 0.0 },
+                      },
+                    },
+                  },
+                },
+                index: 2,
+              },
+            },
+            // Completed - Green
+            {
+              addConditionalFormatRule: {
+                rule: {
+                  ranges: [
+                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                  ],
+                  booleanRule: {
+                    condition: {
+                      type: 'TEXT_EQ',
+                      values: [{ userEnteredValue: 'Completed' }],
+                    },
+                    format: {
+                      backgroundColor: { red: 0.7, green: 0.9, blue: 0.7 },
+                      textFormat: {
+                        bold: true,
+                        foregroundColor: { red: 0.0, green: 0.4, blue: 0.0 },
+                      },
+                    },
+                  },
+                },
+                index: 3,
+              },
+            },
+            // Cancelled - Gray
+            {
+              addConditionalFormatRule: {
+                rule: {
+                  ranges: [
+                    { sheetId: 0, startColumnIndex: 7, endColumnIndex: 8 },
+                  ],
+                  booleanRule: {
+                    condition: {
+                      type: 'TEXT_EQ',
+                      values: [{ userEnteredValue: 'Cancelled' }],
+                    },
+                    format: {
+                      backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
+                      textFormat: {
+                        bold: true,
+                        foregroundColor: { red: 0.4, green: 0.4, blue: 0.4 },
+                      },
+                    },
+                  },
+                },
+                index: 4,
+              },
+            },
+          ],
+        },
+      }
+
+      try {
+        console.log('Adding conditional formatting rules...')
+        await sheets.spreadsheets.batchUpdate(conditionalFormatRequest)
+        console.log('Conditional formatting added')
+      } catch (conditionalError) {
+        console.log('Conditional formatting may already exist, skipping...')
+      }
 
       sheetsResponse = {
         ...appendResponse.data,
-        colorUpdate: 'Red color applied to Pending status',
+        formatting:
+          'Applied clickable links, dropdown, colors, and bold formatting',
+        rowNumber: rowNumber,
+        emailLink: `mailto:${email}`,
+        phoneLink: `tel:${cleanPhone}`,
       }
     } catch (sheetsError) {
       console.error('Google Sheets error:', sheetsError.message)
       console.error('Error details:', sheetsError)
-
-      // Additional debugging for JWT errors
-      if (
-        sheetsError.message.includes('invalid_grant') ||
-        sheetsError.message.includes('JWT')
-      ) {
-        console.error('JWT Signature Error - Check private key format!')
-        console.error(
-          'Environment variable exists:',
-          !!process.env.GOOGLE_SHEETS_CREDENTIALS
-        )
-        if (process.env.GOOGLE_SHEETS_CREDENTIALS) {
-          const testCreds = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS)
-          console.error(
-            'Private key preview:',
-            testCreds.private_key
-              ? testCreds.private_key.substring(0, 50)
-              : 'MISSING'
-          )
-        }
-      }
-
-      // Continue without sheets integration
     }
 
-    // Success response - Use the same ID format as Google Sheets
+    // Success response
     const responseBookingId = `T-2025-${Math.floor(Math.random() * 900) + 100}`
 
     const response = {
@@ -258,7 +513,7 @@ export default async function handler(req, res) {
         timestamp: new Date().toISOString(),
         status: 'Pending',
         sheetsResponse: sheetsResponse
-          ? 'Data saved to Google Sheets with red status color'
+          ? 'Data saved with clickable email/phone links and formatting'
           : 'Local booking only',
       },
       meta: {
