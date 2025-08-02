@@ -1,4 +1,4 @@
-// pages/api/booking.js - Next.js API Route with Google Sheets Integration
+// pages/api/booking.js - Next.js API Route with Google Sheets Integration and Colors
 import { google } from 'googleapis'
 
 export default async function handler(req, res) {
@@ -139,16 +139,17 @@ export default async function handler(req, res) {
         req.body.age || 'Not specified', // Age
         numberOfPeople || '1', // Group size
         selectedPackage || 'Not specified', // Selected Tours
-        'Pending', // Status
+        'Pending', // Status (Column H - this will be colored red)
         humanReadableDate, // Created at
         humanReadableDate, // Updated at (same as created for new booking)
       ]
 
       console.log('Writing to Google Sheets...')
-      // Append to Google Sheet
-      const response = await sheets.spreadsheets.values.append({
+
+      // Step 1: Append the data to get the row number
+      const appendResponse = await sheets.spreadsheets.values.append({
         spreadsheetId: '1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA',
-        range: 'Sheet1!A:J', // Updated range for 10 columns
+        range: 'Sheet1!A:J',
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         resource: {
@@ -156,8 +157,60 @@ export default async function handler(req, res) {
         },
       })
 
-      sheetsResponse = response.data
-      console.log('Google Sheets write successful:', sheetsResponse.updates)
+      console.log('Data written successfully:', appendResponse.data.updates)
+
+      // Step 2: Get the row number that was just added
+      const updatedRange = appendResponse.data.updates.updatedRange
+      const rowNumber = parseInt(updatedRange.match(/(\d+)$/)[0]) // Extract row number from range like "Sheet1!A2:J2"
+
+      console.log('Added to row number:', rowNumber)
+
+      // Step 3: Apply red background color to the Status column (Column H)
+      const colorRequest = {
+        spreadsheetId: '1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA',
+        resource: {
+          requests: [
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0, // First sheet (Sheet1)
+                  startRowIndex: rowNumber - 1, // 0-indexed, so subtract 1
+                  endRowIndex: rowNumber, // End at the same row
+                  startColumnIndex: 7, // Column H (0-indexed, so H = 7)
+                  endColumnIndex: 8, // End at column H
+                },
+                cell: {
+                  userEnteredFormat: {
+                    backgroundColor: {
+                      red: 1.0, // Full red
+                      green: 0.8, // Light red background
+                      blue: 0.8, // Light red background
+                    },
+                    textFormat: {
+                      foregroundColor: {
+                        red: 0.8, // Dark red text
+                        green: 0.0,
+                        blue: 0.0,
+                      },
+                      bold: true,
+                    },
+                  },
+                },
+                fields: 'userEnteredFormat(backgroundColor,textFormat)',
+              },
+            },
+          ],
+        },
+      }
+
+      console.log('Applying red color to Status column...')
+      const colorResponse = await sheets.spreadsheets.batchUpdate(colorRequest)
+      console.log('Color applied successfully')
+
+      sheetsResponse = {
+        ...appendResponse.data,
+        colorUpdate: 'Red color applied to Pending status',
+      }
     } catch (sheetsError) {
       console.error('Google Sheets error:', sheetsError.message)
       console.error('Error details:', sheetsError)
@@ -205,7 +258,7 @@ export default async function handler(req, res) {
         timestamp: new Date().toISOString(),
         status: 'Pending',
         sheetsResponse: sheetsResponse
-          ? 'Data saved to Google Sheets'
+          ? 'Data saved to Google Sheets with red status color'
           : 'Local booking only',
       },
       meta: {
