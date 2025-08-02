@@ -54,7 +54,7 @@ export async function submitBooking(
   bookingData: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   try {
-    const response = await apiRequest('/sheets-booking', {
+    const response = await apiRequest('/booking', {
       method: 'POST',
       body: JSON.stringify(bookingData),
     })

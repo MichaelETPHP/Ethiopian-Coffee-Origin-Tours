@@ -1,5 +1,7 @@
-// pages/api/booking.js - Next.js API Route
-export default function handler(req, res) {
+// pages/api/booking.js - Next.js API Route with Google Sheets Integration
+import { google } from 'googleapis'
+
+export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
@@ -45,6 +47,79 @@ export default function handler(req, res) {
       })
     }
 
+    // Google Sheets Integration
+    let sheetsResponse = null
+    try {
+      // Load credentials from environment variable or file
+      console.log('=== Loading Google Sheets Credentials ===')
+
+      let credentials
+
+      // Load credentials from file (works for both development and production)
+      console.log('Credentials loaded from file successfully')
+      const fs = require('fs')
+      const path = require('path')
+      credentials = JSON.parse(
+        fs.readFileSync(
+          path.join(process.cwd(), 'my-sheets-app-467604-764e3b37e3b1.json'),
+          'utf8'
+        )
+      )
+
+      console.log('Credentials loaded successfully')
+      console.log('Client email:', credentials.client_email)
+
+      if (!credentials.client_email || !credentials.private_key) {
+        console.log(
+          'Google Sheets credentials not available, skipping sheets integration'
+        )
+        throw new Error('Google Sheets credentials not configured')
+      }
+
+      // Create JWT client
+      const auth = new google.auth.JWT(
+        credentials.client_email,
+        null,
+        credentials.private_key.replace(/\\n/g, '\n'),
+        ['https://www.googleapis.com/auth/spreadsheets']
+      )
+
+      // Authorize the client
+      await auth.authorize()
+
+      // Create Google Sheets API client
+      const sheets = google.sheets({ version: 'v4', auth })
+
+      // Prepare data for Google Sheets
+      const rowData = [
+        new Date().toISOString(), // Timestamp
+        fullName,
+        email,
+        phone,
+        selectedPackage || 'Not specified',
+        numberOfPeople || '1',
+        'New Booking',
+      ]
+
+      // Append to Google Sheet
+      const response = await sheets.spreadsheets.values.append({
+        spreadsheetId: '1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA',
+        range: 'Sheet1!A:G',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        resource: {
+          values: [rowData],
+        },
+      })
+
+      sheetsResponse = response.data
+      console.log('Google Sheets response:', sheetsResponse)
+    } catch (sheetsError) {
+      console.error('Google Sheets error:', sheetsError.message)
+      console.error('Full error:', sheetsError)
+      // Continue without sheets integration
+    }
+
     // Success response
     const bookingId = `TOUR-${Date.now()}-${Math.random()
       .toString(36)
@@ -65,6 +140,9 @@ export default function handler(req, res) {
         },
         timestamp: new Date().toISOString(),
         status: 'confirmed',
+        sheetsResponse: sheetsResponse
+          ? 'Data saved to Google Sheets'
+          : 'Local booking only',
       },
       meta: {
         apiVersion: '1.0.0',

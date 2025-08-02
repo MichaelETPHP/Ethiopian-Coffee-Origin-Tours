@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "next dev",
-    "build": "next build", 
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
     "caniuse-lite": "^1.0.30001731",
+    "dotenv": "^17.2.1",
     "google-auth-library": "^10.2.0",
     "googleapis": "^118.0.0",
     "lucide-react": "^0.344.0",
