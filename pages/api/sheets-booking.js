@@ -49,10 +49,20 @@ export default async function handler(req, res) {
     // Google Sheets Integration
     let sheetsResponse = null
     try {
-      // Load credentials from environment variable
+      // Load credentials from file directly
+      console.log('=== Loading Google Sheets Credentials ===')
+
+      const fs = require('fs')
+      const path = require('path')
       const credentials = JSON.parse(
-        process.env.GOOGLE_SHEETS_CREDENTIALS || '{}'
+        fs.readFileSync(
+          path.join(process.cwd(), 'my-sheets-app-467604-764e3b37e3b1.json'),
+          'utf8'
+        )
       )
+
+      console.log('Credentials loaded from file successfully')
+      console.log('Client email:', credentials.client_email)
 
       if (!credentials.client_email || !credentials.private_key) {
         console.log(
@@ -101,6 +111,7 @@ export default async function handler(req, res) {
       console.log('Google Sheets response:', sheetsResponse)
     } catch (sheetsError) {
       console.error('Google Sheets error:', sheetsError.message)
+      console.error('Full error:', sheetsError)
       // Continue without sheets integration
     }
 
