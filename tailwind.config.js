@@ -1,6 +1,11 @@
 /** @type {import('tailwindcss').Config} */
-export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
   theme: {
     extend: {
       colors: {
@@ -40,18 +45,18 @@ export default {
           700: '#8B2323',
           800: '#701C1C',
           900: '#5A1616',
-        }
+        },
       },
       fontFamily: {
-        'playfair': ['Playfair Display', 'serif'],
-        'inter': ['Inter', 'sans-serif'],
+        playfair: ['Playfair Display', 'serif'],
+        inter: ['Inter', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 1.5s ease-out',
         'slide-up': 'slideUp 0.8s ease-out',
         'slide-in-left': 'slideInLeft 0.8s ease-out',
         'slide-in-right': 'slideInRight 0.8s ease-out',
-        'float': 'float 6s ease-in-out infinite',
+        float: 'float 6s ease-in-out infinite',
         'bounce-slow': 'bounce 3s infinite',
       },
       keyframes: {
@@ -74,12 +79,12 @@ export default {
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-10px)' },
-        }
+        },
       },
       backdropBlur: {
         xs: '2px',
-      }
+      },
     },
   },
   plugins: [],
-};
+}
