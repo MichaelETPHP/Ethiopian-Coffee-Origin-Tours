@@ -251,7 +251,7 @@ const Footer: React.FC = () => {
       {/* WhatsApp Chat Bot Button */}
       <div className='fixed bottom-6 right-6 z-50'>
         <a
-          href='https://wa.me/251933801212'
+          href='https://wa.me/251976260436'
           target='_blank'
           rel='noopener noreferrer'
           className='group relative flex items-center justify-center w-16 h-16 bg-green-500 hover:bg-green-600 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 cursor-pointer'
