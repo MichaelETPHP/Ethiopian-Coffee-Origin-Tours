@@ -1,4 +1,4 @@
-// pages/api/booking.js - Next.js API Route with Clickable Email & Phone Links + Country Column
+// pages/api/booking.js - Next.js API Route with Header Management
 import { google } from 'googleapis'
 
 export default async function handler(req, res) {
@@ -104,7 +104,153 @@ export default async function handler(req, res) {
       const sheets = google.sheets({ version: 'v4', auth })
       const spreadsheetId = '1XOXl-joyCk5rBMtocTvGIbZMTcIqDRia914chGpleEA'
 
-      // Prepare data for Google Sheets
+      // Define headers in the correct order
+      const expectedHeaders = [
+        'ID',
+        'Name',
+        'Email',
+        'Phone',
+        'Age',
+        'Group Size',
+        'Country',
+        'Selected Tour Package',
+        'Status',
+        'Created At',
+        'Updated At',
+      ]
+
+      // Step 1: Check if headers exist and create them if needed
+      console.log('Checking for existing headers...')
+
+      try {
+        const headerResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId: spreadsheetId,
+          range: 'Sheet1!A1:K1', // Check first row for headers
+        })
+
+        const existingHeaders = headerResponse.data.values
+          ? headerResponse.data.values[0]
+          : []
+        console.log('Existing headers:', existingHeaders)
+
+        // Check if headers are missing or incomplete
+        if (
+          !existingHeaders ||
+          existingHeaders.length === 0 ||
+          existingHeaders.length < expectedHeaders.length
+        ) {
+          console.log(
+            'Headers missing or incomplete, creating/updating headers...'
+          )
+
+          // Create/update headers
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: spreadsheetId,
+            range: 'Sheet1!A1:K1',
+            valueInputOption: 'RAW',
+            resource: {
+              values: [expectedHeaders],
+            },
+          })
+
+          // Format headers with bold styling and colors
+          const headerFormatRequest = {
+            spreadsheetId: spreadsheetId,
+            resource: {
+              requests: [
+                {
+                  repeatCell: {
+                    range: {
+                      sheetId: 0,
+                      startRowIndex: 0, // First row (headers)
+                      endRowIndex: 1,
+                      startColumnIndex: 0, // All columns A to K
+                      endColumnIndex: 11,
+                    },
+                    cell: {
+                      userEnteredFormat: {
+                        backgroundColor: {
+                          red: 0.2,
+                          green: 0.3,
+                          blue: 0.6, // Dark blue background
+                        },
+                        textFormat: {
+                          foregroundColor: {
+                            red: 1.0,
+                            green: 1.0,
+                            blue: 1.0, // White text
+                          },
+                          bold: true,
+                          fontSize: 12,
+                        },
+                        horizontalAlignment: 'CENTER',
+                        verticalAlignment: 'MIDDLE',
+                      },
+                    },
+                    fields:
+                      'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)',
+                  },
+                },
+                // Add borders to header
+                {
+                  updateBorders: {
+                    range: {
+                      sheetId: 0,
+                      startRowIndex: 0,
+                      endRowIndex: 1,
+                      startColumnIndex: 0,
+                      endColumnIndex: 11,
+                    },
+                    top: {
+                      style: 'SOLID',
+                      width: 2,
+                      color: { red: 0.1, green: 0.2, blue: 0.5 },
+                    },
+                    bottom: {
+                      style: 'SOLID',
+                      width: 2,
+                      color: { red: 0.1, green: 0.2, blue: 0.5 },
+                    },
+                    left: {
+                      style: 'SOLID',
+                      width: 1,
+                      color: { red: 0.1, green: 0.2, blue: 0.5 },
+                    },
+                    right: {
+                      style: 'SOLID',
+                      width: 1,
+                      color: { red: 0.1, green: 0.2, blue: 0.5 },
+                    },
+                  },
+                },
+              ],
+            },
+          }
+
+          await sheets.spreadsheets.batchUpdate(headerFormatRequest)
+          console.log('Headers created and formatted successfully')
+        } else {
+          console.log('Headers already exist, proceeding with data insertion')
+        }
+      } catch (headerError) {
+        console.log(
+          'Error checking headers, will create them:',
+          headerError.message
+        )
+
+        // Create headers if there was an error reading them
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: spreadsheetId,
+          range: 'Sheet1!A1:K1',
+          valueInputOption: 'RAW',
+          resource: {
+            values: [expectedHeaders],
+          },
+        })
+        console.log('Headers created after error')
+      }
+
+      // Prepare data for Google Sheets in the correct order
       const now = new Date()
       const humanReadableDate = now.toLocaleString('en-US', {
         year: 'numeric',
@@ -117,30 +263,29 @@ export default async function handler(req, res) {
       })
 
       const bookingId = `T-2025-${Math.floor(Math.random() * 900) + 100}`
-
-      // Format phone number for better calling (remove spaces and special chars for tel: link)
       const cleanPhone = phone.replace(/[\s\-\(\)]/g, '')
 
+      // Data in the exact order of headers
       const rowData = [
         bookingId, // A: ID
         fullName, // B: Name
         email, // C: Email (will be clickable)
         phone, // D: Phone (will be clickable)
         req.body.age || 'Not specified', // E: Age
-        country || 'Not specified', // F: Country (NEW - will be bold)
-        numberOfPeople || '1', // G: Group size
-        selectedPackage || 'Not specified', // H: Selected Tours (will be bold)
+        numberOfPeople || '1', // F: Group Size
+        country || 'Not specified', // G: Country (will be bold)
+        selectedPackage || 'Not specified', // H: Selected Tour Package (will be bold)
         'Pending', // I: Status (will have dropdown)
-        humanReadableDate, // J: Created at
-        humanReadableDate, // K: Updated at
+        humanReadableDate, // J: Created At
+        humanReadableDate, // K: Updated At
       ]
 
-      console.log('Writing to Google Sheets...')
+      console.log('Writing booking data to Google Sheets...')
 
-      // Step 1: Append the data
+      // Step 2: Append the data
       const appendResponse = await sheets.spreadsheets.values.append({
         spreadsheetId: spreadsheetId,
-        range: 'Sheet1!A:K', // Updated range to include K column
+        range: 'Sheet1!A:K',
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         resource: {
@@ -150,13 +295,13 @@ export default async function handler(req, res) {
 
       console.log('Data written successfully')
 
-      // Step 2: Get the row number that was just added
+      // Step 3: Get the row number that was just added
       const updatedRange = appendResponse.data.updates.updatedRange
       const rowNumber = parseInt(updatedRange.match(/(\d+)$/)[0])
       console.log('Added to row number:', rowNumber)
 
-      // Step 3: Add clickable links for email and phone + formatting
-      const linkRequest = {
+      // Step 4: Apply formatting to the new row
+      const formatRequest = {
         spreadsheetId: spreadsheetId,
         resource: {
           requests: [
@@ -176,11 +321,7 @@ export default async function handler(req, res) {
                   },
                   userEnteredFormat: {
                     textFormat: {
-                      foregroundColor: {
-                        red: 0.0,
-                        green: 0.0,
-                        blue: 0.8, // Blue color for email link
-                      },
+                      foregroundColor: { red: 0.0, green: 0.0, blue: 0.8 },
                       underline: true,
                       bold: false,
                     },
@@ -205,11 +346,7 @@ export default async function handler(req, res) {
                   },
                   userEnteredFormat: {
                     textFormat: {
-                      foregroundColor: {
-                        red: 0.0,
-                        green: 0.6,
-                        blue: 0.0, // Green color for phone link
-                      },
+                      foregroundColor: { red: 0.0, green: 0.6, blue: 0.0 },
                       underline: true,
                       bold: false,
                     },
@@ -218,31 +355,23 @@ export default async function handler(req, res) {
                 fields: 'userEnteredValue,userEnteredFormat.textFormat',
               },
             },
-            // Bold the Country column (F) - NEW
+            // Bold the Country column (G)
             {
               repeatCell: {
                 range: {
                   sheetId: 0,
                   startRowIndex: rowNumber - 1,
                   endRowIndex: rowNumber,
-                  startColumnIndex: 5, // Column F (Country)
-                  endColumnIndex: 6,
+                  startColumnIndex: 6, // Column G (Country)
+                  endColumnIndex: 7,
                 },
                 cell: {
                   userEnteredFormat: {
                     textFormat: {
                       bold: true,
-                      foregroundColor: {
-                        red: 0.6,
-                        green: 0.0,
-                        blue: 0.6, // Purple color for country
-                      },
+                      foregroundColor: { red: 0.6, green: 0.0, blue: 0.6 },
                     },
-                    backgroundColor: {
-                      red: 0.98,
-                      green: 0.9,
-                      blue: 1.0, // Light purple background
-                    },
+                    backgroundColor: { red: 0.98, green: 0.9, blue: 1.0 },
                     horizontalAlignment: 'CENTER',
                   },
                 },
@@ -250,44 +379,36 @@ export default async function handler(req, res) {
                   'userEnteredFormat(textFormat,backgroundColor,horizontalAlignment)',
               },
             },
-            // Bold the Selected Tours column (H) - Updated column index
+            // Bold the Selected Tour Package column (H)
             {
               repeatCell: {
                 range: {
                   sheetId: 0,
                   startRowIndex: rowNumber - 1,
                   endRowIndex: rowNumber,
-                  startColumnIndex: 7, // Column H (Selected Tours) - Updated from 6 to 7
+                  startColumnIndex: 7, // Column H (Selected Tour Package)
                   endColumnIndex: 8,
                 },
                 cell: {
                   userEnteredFormat: {
                     textFormat: {
                       bold: true,
-                      foregroundColor: {
-                        red: 0.0,
-                        green: 0.4,
-                        blue: 0.8, // Blue color for tour package
-                      },
+                      foregroundColor: { red: 0.0, green: 0.4, blue: 0.8 },
                     },
-                    backgroundColor: {
-                      red: 0.9,
-                      green: 0.95,
-                      blue: 1.0, // Light blue background
-                    },
+                    backgroundColor: { red: 0.9, green: 0.95, blue: 1.0 },
                   },
                 },
                 fields: 'userEnteredFormat(textFormat,backgroundColor)',
               },
             },
-            // Add dropdown validation for Status column (I) - Updated column index
+            // Add dropdown validation for Status column (I)
             {
               setDataValidation: {
                 range: {
                   sheetId: 0,
                   startRowIndex: rowNumber - 1,
                   endRowIndex: rowNumber,
-                  startColumnIndex: 8, // Column I (Status) - Updated from 7 to 8
+                  startColumnIndex: 8, // Column I (Status)
                   endColumnIndex: 9,
                 },
                 rule: {
@@ -306,29 +427,21 @@ export default async function handler(req, res) {
                 },
               },
             },
-            // Format Status column with conditional colors (I) - Updated column index
+            // Format Status column (I)
             {
               repeatCell: {
                 range: {
                   sheetId: 0,
                   startRowIndex: rowNumber - 1,
                   endRowIndex: rowNumber,
-                  startColumnIndex: 8, // Column I (Status) - Updated from 7 to 8
+                  startColumnIndex: 8, // Column I (Status)
                   endColumnIndex: 9,
                 },
                 cell: {
                   userEnteredFormat: {
-                    backgroundColor: {
-                      red: 1.0, // Red background for Pending
-                      green: 0.8,
-                      blue: 0.8,
-                    },
+                    backgroundColor: { red: 1.0, green: 0.8, blue: 0.8 },
                     textFormat: {
-                      foregroundColor: {
-                        red: 0.8,
-                        green: 0.0,
-                        blue: 0.0,
-                      },
+                      foregroundColor: { red: 0.8, green: 0.0, blue: 0.0 },
                       bold: true,
                     },
                     horizontalAlignment: 'CENTER',
@@ -338,7 +451,7 @@ export default async function handler(req, res) {
                   'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)',
               },
             },
-            // Format the entire row with borders - Updated range
+            // Add borders to the entire row
             {
               updateBorders: {
                 range: {
@@ -346,7 +459,7 @@ export default async function handler(req, res) {
                   startRowIndex: rowNumber - 1,
                   endRowIndex: rowNumber,
                   startColumnIndex: 0,
-                  endColumnIndex: 11, // Updated from 10 to 11 for new column
+                  endColumnIndex: 11,
                 },
                 top: {
                   style: 'SOLID',
@@ -374,141 +487,140 @@ export default async function handler(req, res) {
         },
       }
 
-      console.log('Applying formatting, links, and dropdown validation...')
-      await sheets.spreadsheets.batchUpdate(linkRequest)
-      console.log('Links and formatting applied successfully')
+      console.log('Applying formatting...')
+      await sheets.spreadsheets.batchUpdate(formatRequest)
+      console.log('Formatting applied successfully')
 
-      // Step 4: Add conditional formatting rules for different statuses - Updated column indices
-      const conditionalFormatRequest = {
-        spreadsheetId: spreadsheetId,
-        resource: {
-          requests: [
-            // Pending - Red
-            {
-              addConditionalFormatRule: {
-                rule: {
-                  ranges: [
-                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
-                  ],
-                  booleanRule: {
-                    condition: {
-                      type: 'TEXT_EQ',
-                      values: [{ userEnteredValue: 'Pending' }],
-                    },
-                    format: {
-                      backgroundColor: { red: 1.0, green: 0.8, blue: 0.8 },
-                      textFormat: {
-                        bold: true,
-                        foregroundColor: { red: 0.8, green: 0.0, blue: 0.0 },
-                      },
-                    },
-                  },
-                },
-                index: 0,
-              },
-            },
-            // Under Review - Orange
-            {
-              addConditionalFormatRule: {
-                rule: {
-                  ranges: [
-                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
-                  ],
-                  booleanRule: {
-                    condition: {
-                      type: 'TEXT_EQ',
-                      values: [{ userEnteredValue: 'Under Review' }],
-                    },
-                    format: {
-                      backgroundColor: { red: 1.0, green: 0.9, blue: 0.7 },
-                      textFormat: {
-                        bold: true,
-                        foregroundColor: { red: 0.8, green: 0.4, blue: 0.0 },
-                      },
-                    },
-                  },
-                },
-                index: 1,
-              },
-            },
-            // Confirmed - Light Green
-            {
-              addConditionalFormatRule: {
-                rule: {
-                  ranges: [
-                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
-                  ],
-                  booleanRule: {
-                    condition: {
-                      type: 'TEXT_EQ',
-                      values: [{ userEnteredValue: 'Confirmed' }],
-                    },
-                    format: {
-                      backgroundColor: { red: 0.8, green: 1.0, blue: 0.8 },
-                      textFormat: {
-                        bold: true,
-                        foregroundColor: { red: 0.0, green: 0.6, blue: 0.0 },
-                      },
-                    },
-                  },
-                },
-                index: 2,
-              },
-            },
-            // Completed - Green
-            {
-              addConditionalFormatRule: {
-                rule: {
-                  ranges: [
-                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
-                  ],
-                  booleanRule: {
-                    condition: {
-                      type: 'TEXT_EQ',
-                      values: [{ userEnteredValue: 'Completed' }],
-                    },
-                    format: {
-                      backgroundColor: { red: 0.7, green: 0.9, blue: 0.7 },
-                      textFormat: {
-                        bold: true,
-                        foregroundColor: { red: 0.0, green: 0.4, blue: 0.0 },
-                      },
-                    },
-                  },
-                },
-                index: 3,
-              },
-            },
-            // Cancelled - Gray
-            {
-              addConditionalFormatRule: {
-                rule: {
-                  ranges: [
-                    { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 }, // Updated from 7,8 to 8,9
-                  ],
-                  booleanRule: {
-                    condition: {
-                      type: 'TEXT_EQ',
-                      values: [{ userEnteredValue: 'Cancelled' }],
-                    },
-                    format: {
-                      backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
-                      textFormat: {
-                        bold: true,
-                        foregroundColor: { red: 0.4, green: 0.4, blue: 0.4 },
-                      },
-                    },
-                  },
-                },
-                index: 4,
-              },
-            },
-          ],
-        },
-      }
-
+      // Step 5: Add conditional formatting for status (only if not already added)
       try {
-        console.log('Adding conditional formatting rules...')
+        const conditionalFormatRequest = {
+          spreadsheetId: spreadsheetId,
+          resource: {
+            requests: [
+              // Pending - Red
+              {
+                addConditionalFormatRule: {
+                  rule: {
+                    ranges: [
+                      { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 },
+                    ],
+                    booleanRule: {
+                      condition: {
+                        type: 'TEXT_EQ',
+                        values: [{ userEnteredValue: 'Pending' }],
+                      },
+                      format: {
+                        backgroundColor: { red: 1.0, green: 0.8, blue: 0.8 },
+                        textFormat: {
+                          bold: true,
+                          foregroundColor: { red: 0.8, green: 0.0, blue: 0.0 },
+                        },
+                      },
+                    },
+                  },
+                  index: 0,
+                },
+              },
+              // Under Review - Orange
+              {
+                addConditionalFormatRule: {
+                  rule: {
+                    ranges: [
+                      { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 },
+                    ],
+                    booleanRule: {
+                      condition: {
+                        type: 'TEXT_EQ',
+                        values: [{ userEnteredValue: 'Under Review' }],
+                      },
+                      format: {
+                        backgroundColor: { red: 1.0, green: 0.9, blue: 0.7 },
+                        textFormat: {
+                          bold: true,
+                          foregroundColor: { red: 0.8, green: 0.4, blue: 0.0 },
+                        },
+                      },
+                    },
+                  },
+                  index: 1,
+                },
+              },
+              // Confirmed - Light Green
+              {
+                addConditionalFormatRule: {
+                  rule: {
+                    ranges: [
+                      { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 },
+                    ],
+                    booleanRule: {
+                      condition: {
+                        type: 'TEXT_EQ',
+                        values: [{ userEnteredValue: 'Confirmed' }],
+                      },
+                      format: {
+                        backgroundColor: { red: 0.8, green: 1.0, blue: 0.8 },
+                        textFormat: {
+                          bold: true,
+                          foregroundColor: { red: 0.0, green: 0.6, blue: 0.0 },
+                        },
+                      },
+                    },
+                  },
+                  index: 2,
+                },
+              },
+              // Completed - Green
+              {
+                addConditionalFormatRule: {
+                  rule: {
+                    ranges: [
+                      { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 },
+                    ],
+                    booleanRule: {
+                      condition: {
+                        type: 'TEXT_EQ',
+                        values: [{ userEnteredValue: 'Completed' }],
+                      },
+                      format: {
+                        backgroundColor: { red: 0.7, green: 0.9, blue: 0.7 },
+                        textFormat: {
+                          bold: true,
+                          foregroundColor: { red: 0.0, green: 0.4, blue: 0.0 },
+                        },
+                      },
+                    },
+                  },
+                  index: 3,
+                },
+              },
+              // Cancelled - Gray
+              {
+                addConditionalFormatRule: {
+                  rule: {
+                    ranges: [
+                      { sheetId: 0, startColumnIndex: 8, endColumnIndex: 9 },
+                    ],
+                    booleanRule: {
+                      condition: {
+                        type: 'TEXT_EQ',
+                        values: [{ userEnteredValue: 'Cancelled' }],
+                      },
+                      format: {
+                        backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
+                        textFormat: {
+                          bold: true,
+                          foregroundColor: { red: 0.4, green: 0.4, blue: 0.4 },
+                        },
+                      },
+                    },
+                  },
+                  index: 4,
+                },
+              },
+            ],
+          },
+        }
+
         await sheets.spreadsheets.batchUpdate(conditionalFormatRequest)
         console.log('Conditional formatting added')
       } catch (conditionalError) {
@@ -517,11 +629,9 @@ export default async function handler(req, res) {
 
       sheetsResponse = {
         ...appendResponse.data,
-        formatting:
-          'Applied clickable links, dropdown, colors, country column, and bold formatting',
+        formatting: 'Headers checked/created, data added with full formatting',
         rowNumber: rowNumber,
-        emailLink: `mailto:${email}`,
-        phoneLink: `tel:${cleanPhone}`,
+        headers: expectedHeaders,
       }
     } catch (sheetsError) {
       console.error('Google Sheets error:', sheetsError.message)
@@ -541,14 +651,14 @@ export default async function handler(req, res) {
           email,
           phone,
           age: req.body.age || 'Not specified',
-          country: country || 'Not specified', // Added country to response
+          country: country || 'Not specified',
           selectedPackage,
           numberOfPeople: numberOfPeople || '1',
         },
         timestamp: new Date().toISOString(),
         status: 'Pending',
         sheetsResponse: sheetsResponse
-          ? 'Data saved with clickable email/phone links, country column, and formatting'
+          ? 'Headers managed and data saved with complete formatting'
           : 'Local booking only',
       },
       meta: {
