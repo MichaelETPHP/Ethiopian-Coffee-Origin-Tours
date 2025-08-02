@@ -68,6 +68,11 @@ export default async function handler(req, res) {
 
       console.log('Credentials loaded successfully')
       console.log('Client email:', credentials.client_email)
+      console.log('Private key length:', credentials.private_key.length)
+      console.log(
+        'Private key starts with:',
+        credentials.private_key.substring(0, 50)
+      )
 
       if (!credentials.client_email || !credentials.private_key) {
         console.log(
@@ -80,7 +85,7 @@ export default async function handler(req, res) {
       const auth = new google.auth.JWT(
         credentials.client_email,
         null,
-        credentials.private_key.replace(/\\n/g, '\n'),
+        credentials.private_key,
         ['https://www.googleapis.com/auth/spreadsheets']
       )
 
