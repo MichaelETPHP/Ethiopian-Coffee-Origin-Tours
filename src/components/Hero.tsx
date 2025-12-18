@@ -115,41 +115,6 @@ const Hero: React.FC = () => {
         </h1>
 
         {/* Trip Dates */}
-        <div className='mb-6 sm:mb-8 animate-fade-in'>
-          <div className='flex items-center justify-center space-x-2 sm:space-x-3 mb-4'>
-            <Calendar className='h-4 w-4 sm:h-5 sm:w-5 text-cream-300' />
-            <span className='text-base sm:text-lg lg:text-xl font-inter font-light text-cream-100'>
-              November 26 – December 6, 2025
-            </span>
-          </div>
-        </div>
-
-        {/* Countdown Timer - Mobile Optimized */}
-        <div className='mb-8 sm:mb-12 animate-fade-in'>
-          <div className='text-xs sm:text-sm font-inter text-cream-300 mb-3 sm:mb-4 uppercase tracking-wider'>
-            Adventure begins in
-          </div>
-          <div className='grid grid-cols-4 gap-3 sm:gap-4 md:gap-6 max-w-md mx-auto'>
-            {[
-              { value: timeLeft.days, label: 'Days' },
-              { value: timeLeft.hours, label: 'Hours' },
-              { value: timeLeft.minutes, label: 'Min' },
-              { value: timeLeft.seconds, label: 'Sec' },
-            ].map((item, index) => (
-              <div
-                key={index}
-                className='text-center bg-white/10 backdrop-blur-md rounded-xl py-3 sm:py-4 px-2 sm:px-3 border border-white/20'
-              >
-                <div className='text-xl sm:text-2xl md:text-3xl lg:text-4xl font-playfair font-bold text-white mb-1'>
-                  {item.value.toString().padStart(2, '0')}
-                </div>
-                <div className='text-xs font-inter text-cream-300 uppercase tracking-wide'>
-                  {item.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* Description */}
         <p className='text-base sm:text-lg font-inter font-light mb-8 sm:mb-12 max-w-2xl mx-auto text-cream-100 leading-relaxed px-4 animate-fade-in'>
